@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path
+        name="decrypted_files"
+        path="decrypted/" />
+    <cache-path
+        name="backup_files"
+        path="backups/" />
+    <files-path
+        name="vault_files"
+        path="vault/" />
+</paths>
