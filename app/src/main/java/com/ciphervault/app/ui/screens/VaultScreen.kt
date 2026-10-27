@@ -42,8 +42,11 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.automirrored.filled.Label
+import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.VideoFile
@@ -119,19 +122,24 @@ fun VaultScreen(
     val files by vaultViewModel.files.collectAsState()
     val isLoading by vaultViewModel.isLoading.collectAsState()
     val decryptedUri by vaultViewModel.decryptedUri.collectAsState()
+    val viewingNoteContent by vaultViewModel.viewingNoteContent.collectAsState()
     val currentSort by vaultViewModel.sortOption.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
     var isGridView by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
+    var showCreateNoteDialog by remember { mutableStateOf(false) }
 
     var selectedFileForDetails by remember { mutableStateOf<EncryptedFileEntity?>(null) }
     var fileToDelete by remember { mutableStateOf<EncryptedFileEntity?>(null) }
     var fileToRename by remember { mutableStateOf<EncryptedFileEntity?>(null) }
+    var fileToEditTags by remember { mutableStateOf<EncryptedFileEntity?>(null) }
     var newFileName by remember { mutableStateOf("") }
+    var newTags by remember { mutableStateOf("") }
 
     val context = LocalContext.current
+    val app = context.applicationContext as com.ciphervault.app.CipherVaultApp
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Launcher for exporting decrypted plaintext file directly to user-chosen storage destination
@@ -149,6 +157,7 @@ fun VaultScreen(
 
     // Launch preview / share when decrypted URI becomes available
     decryptedUri?.let { uri ->
+        app.ignoreNextBackgroundLock = true
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, "*/*")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -202,6 +211,24 @@ fun VaultScreen(
 
                     // View Mode & Sort Action Buttons
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Create Note Button
+                        IconButton(
+                            onClick = { showCreateNoteDialog = true },
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(DarkSurfaceVariant)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.NoteAdd,
+                                contentDescription = "New Secure Note",
+                                tint = CyanAccent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         // Sort Button & Dropdown
                         Box {
                             IconButton(
@@ -398,7 +425,13 @@ fun VaultScreen(
                         VaultFileListCard(
                             file = file,
                             onClick = { selectedFileForDetails = file },
-                            onDecrypt = { vaultViewModel.decryptFile(file) },
+                            onDecrypt = {
+                                if (file.originalFileName.endsWith(".note.txt")) {
+                                    vaultViewModel.viewSecureNote(file, context)
+                                } else {
+                                    vaultViewModel.decryptFile(file)
+                                }
+                            },
                             onMore = { selectedFileForDetails = file }
                         )
                     }
@@ -500,7 +533,11 @@ fun VaultScreen(
                 // Action 1: Open Decrypted Preview
                 OutlinedButton(
                     onClick = {
-                        vaultViewModel.decryptFile(file)
+                        if (file.originalFileName.endsWith(".note.txt")) {
+                            vaultViewModel.viewSecureNote(file, context)
+                        } else {
+                            vaultViewModel.decryptFile(file)
+                        }
                         selectedFileForDetails = null
                     },
                     shape = RoundedCornerShape(12.dp),
@@ -519,6 +556,7 @@ fun VaultScreen(
                     onClick = {
                         fileToExport = file
                         selectedFileForDetails = null
+                        app.ignoreNextBackgroundLock = true
                         exportFileLauncher.launch(file.originalFileName)
                     },
                     shape = RoundedCornerShape(12.dp),
@@ -532,7 +570,25 @@ fun VaultScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Action 3: Rename
+                // Action 3: Tags
+                OutlinedButton(
+                    onClick = {
+                        newTags = file.tags
+                        fileToEditTags = file
+                        selectedFileForDetails = null
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CardBorder),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Icon(imageVector = Icons.AutoMirrored.Filled.Label, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Edit Tags", color = TextPrimary, fontWeight = FontWeight.Medium)
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Action 4: Rename
                 OutlinedButton(
                     onClick = {
                         newFileName = file.originalFileName
@@ -550,7 +606,7 @@ fun VaultScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Action 4: Delete
+                // Action 5: Delete
                 OutlinedButton(
                     onClick = {
                         fileToDelete = file
@@ -612,6 +668,51 @@ fun VaultScreen(
         )
     }
 
+    // Edit Tags Dialog
+    fileToEditTags?.let { file ->
+        AlertDialog(
+            onDismissRequest = { fileToEditTags = null },
+            containerColor = DarkCardElevated,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary,
+            title = { Text("Edit File Tags") },
+            text = {
+                Column {
+                    Text("Enter comma-separated tags", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newTags,
+                        onValueChange = { newTags = it },
+                        singleLine = true,
+                        label = { Text("Tags") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = VaultGreen,
+                            unfocusedBorderColor = CardBorder,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vaultViewModel.updateTags(file, newTags)
+                        fileToEditTags = null
+                    }
+                ) {
+                    Text("Save", color = VaultGreen, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { fileToEditTags = null }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            }
+        )
+    }
+
     // Delete Confirmation Dialog
     fileToDelete?.let { file ->
         AlertDialog(
@@ -640,6 +741,88 @@ fun VaultScreen(
             dismissButton = {
                 TextButton(onClick = { fileToDelete = null }) {
                     Text("Cancel", color = TextSecondary)
+                }
+            }
+        )
+    }
+
+    // Create Note Dialog
+    if (showCreateNoteDialog) {
+        var noteTitle by remember { mutableStateOf("") }
+        var noteContent by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreateNoteDialog = false },
+            containerColor = DarkCardElevated,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary,
+            title = { Text("New Secure Note") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = noteTitle,
+                        onValueChange = { noteTitle = it },
+                        singleLine = true,
+                        label = { Text("Title") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = VaultGreen,
+                            unfocusedBorderColor = CardBorder,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = noteContent,
+                        onValueChange = { noteContent = it },
+                        label = { Text("Note content") },
+                        minLines = 5,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = VaultGreen,
+                            unfocusedBorderColor = CardBorder,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vaultViewModel.createSecureNote(context, noteTitle, noteContent)
+                        showCreateNoteDialog = false
+                    },
+                    enabled = noteTitle.isNotBlank() && noteContent.isNotBlank()
+                ) {
+                    Text("Save to Vault", color = VaultGreen, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateNoteDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            }
+        )
+    }
+
+    // View Note Dialog
+    viewingNoteContent?.let { (title, content) ->
+        AlertDialog(
+            onDismissRequest = { vaultViewModel.clearViewingNote() },
+            containerColor = DarkCardElevated,
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary,
+            title = { Text(title) },
+            text = {
+                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    item {
+                        Text(content, color = TextPrimary, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { vaultViewModel.clearViewingNote() }) {
+                    Text("Close", color = VaultGreen, fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -705,6 +888,16 @@ private fun VaultFileListCard(
                         text = " • ${formatDate(file.encryptedAt)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary
+                    )
+                }
+                if (file.tags.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "\uD83C\uDFF7\uFE0F ${file.tags}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CyanAccent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -792,6 +985,16 @@ private fun VaultFileGridCard(
                 color = VaultGreen,
                 fontWeight = FontWeight.Medium
             )
+            if (file.tags.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "\uD83C\uDFF7\uFE0F ${file.tags}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CyanAccent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

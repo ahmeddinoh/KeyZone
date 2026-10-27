@@ -33,6 +33,16 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val _isProcessing = MutableStateFlow(false)
     val isProcessing: StateFlow<Boolean> = _isProcessing
 
+    init {
+        viewModelScope.launch {
+            app.vaultLockedEvent.collect { timestamp ->
+                if (timestamp > 0L && _appState.value == AppState.AUTHENTICATED) {
+                    _appState.value = AppState.LOCKED
+                }
+            }
+        }
+    }
+
     private var failedAttempts = 0
     private var lockoutJob: Job? = null
     private val _lockoutSecondsRemaining = MutableStateFlow(0)

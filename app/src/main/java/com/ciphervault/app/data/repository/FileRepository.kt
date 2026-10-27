@@ -109,7 +109,12 @@ class FileRepository(
                 return@withContext Result.failure(Exception("Encrypted file not found on disk"))
             }
 
-            val decryptedFile = File(decryptedCacheDir, entity.originalFileName)
+            // Generate a unique filename in the cache directory to prevent crashes
+            // when decrypting the same file multiple times (e.g. previewing twice)
+            // or when the previous file is still locked by the external viewer intent.
+            val extension = entity.originalFileName.substringAfterLast('.', "")
+            val uniqueName = "${java.util.UUID.randomUUID()}.${extension}"
+            val decryptedFile = File(decryptedCacheDir, uniqueName)
 
             encryptedFile.inputStream().use { input ->
                 decryptedFile.outputStream().use { output ->
@@ -117,7 +122,7 @@ class FileRepository(
                 }
             }
 
-            val uri = FileProvider.getUriForFile(
+            val uri = androidx.core.content.FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
                 decryptedFile
@@ -142,7 +147,9 @@ class FileRepository(
                 return@withContext Result.failure(Exception("Encrypted file not found on disk"))
             }
 
-            val outputStream = context.contentResolver.openOutputStream(destinationUri)
+            // Using 'wt' mode prevents openOutputStream from failing in certain edge cases
+            // like an existing incomplete file descriptor created by SAF ActivityResultContract.
+            val outputStream = context.contentResolver.openOutputStream(destinationUri, "wt")
                 ?: return@withContext Result.failure(Exception("Cannot open destination location"))
 
             encryptedFile.inputStream().use { input ->
@@ -158,6 +165,10 @@ class FileRepository(
 
     suspend fun renameFile(entity: EncryptedFileEntity, newName: String) = withContext(Dispatchers.IO) {
         encryptedFileDao.renameFile(entity.id, newName)
+    }
+
+    suspend fun updateTags(entity: EncryptedFileEntity, tags: String) = withContext(Dispatchers.IO) {
+        encryptedFileDao.updateTags(entity.id, tags)
     }
 
     suspend fun deleteFile(entity: EncryptedFileEntity) = withContext(Dispatchers.IO) {

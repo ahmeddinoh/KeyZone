@@ -1,11 +1,14 @@
 package com.ciphervault.app.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ciphervault.app.CipherVaultApp
 import com.ciphervault.app.data.db.EncryptedFileEntity
+import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -68,6 +71,9 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     private val _decryptedUri = MutableStateFlow<Uri?>(null)
     val decryptedUri: StateFlow<Uri?> = _decryptedUri
 
+    private val _viewingNoteContent = MutableStateFlow<Pair<String, String>?>(null)
+    val viewingNoteContent: StateFlow<Pair<String, String>?> = _viewingNoteContent
+
     fun setSortOption(option: SortOption) {
         _sortOption.value = option
     }
@@ -112,6 +118,56 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             _toastMessage.value = "Renamed to \"${newName.trim()}\""
         }
     }
+
+    fun updateTags(entity: EncryptedFileEntity, tags: String) {
+        viewModelScope.launch {
+            repository.updateTags(entity, tags.trim())
+            _toastMessage.value = "Tags updated"
+        }
+    }
+
+    fun createSecureNote(context: Context, title: String, content: String) {
+        if (title.isBlank() || content.isBlank()) return
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val tempFile = File(context.cacheDir, "$title.note.txt")
+                tempFile.writeText(content)
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile)
+                repository.encryptFile(uri, "$title.note.txt", "text/plain", masterKey, deleteOriginal = false)
+                tempFile.delete()
+                _toastMessage.value = "Secure note saved"
+            } catch (e: Exception) {
+                _toastMessage.value = "Failed to save note: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun viewSecureNote(entity: EncryptedFileEntity, context: Context) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.decryptFile(entity, masterKey)
+                .onSuccess { uri ->
+                    try {
+                        val inputStream = context.contentResolver.openInputStream(uri)
+                        val text = inputStream?.bufferedReader().use { it?.readText() }
+                        if (text != null) {
+                            _viewingNoteContent.value = Pair(entity.originalFileName, text)
+                        } else {
+                            _toastMessage.value = "Note is empty"
+                        }
+                    } catch (e: Exception) {
+                        _toastMessage.value = "Failed to read note"
+                    }
+                }
+                .onFailure { _toastMessage.value = "Decryption failed: ${it.message}" }
+            _isLoading.value = false
+        }
+    }
+
+    fun clearViewingNote() { _viewingNoteContent.value = null }
 
     fun deleteFile(entity: EncryptedFileEntity) {
         viewModelScope.launch {

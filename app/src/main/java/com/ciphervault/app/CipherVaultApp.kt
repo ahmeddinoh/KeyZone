@@ -10,8 +10,13 @@ import com.ciphervault.app.data.repository.FileRepository
 import com.ciphervault.app.totp.RecoveryCodeManager
 import com.ciphervault.app.totp.TotpManager
 import java.io.File
+import android.net.Uri
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class CipherVaultApp : Application() {
+
+    // Pending URIs shared from external apps
+    val pendingSharedUris = MutableStateFlow<List<Uri>>(emptyList())
 
     lateinit var database: AppDatabase
         private set
@@ -43,6 +48,12 @@ class CipherVaultApp : Application() {
      * Never persisted to disk in plaintext.
      */
     var sessionMasterKey: ByteArray? = null
+    
+    /** 
+     * Flag to temporarily bypass background auto-locking when the app intentionally
+     * launches system activities (like file pickers or share sheets) that pause the app.
+     */
+    var ignoreNextBackgroundLock = false
 
     override fun onCreate() {
         super.onCreate()
@@ -84,7 +95,13 @@ class CipherVaultApp : Application() {
                 decryptedDir.listFiles()?.forEach { it.delete() }
             }
         } catch (_: Exception) {}
+        
+        // Notify any active view models that the vault is now locked
+        _vaultLockedEvent.value = System.currentTimeMillis()
     }
+
+    private val _vaultLockedEvent = MutableStateFlow(0L)
+    val vaultLockedEvent: kotlinx.coroutines.flow.StateFlow<Long> = _vaultLockedEvent
 
     companion object {
         lateinit var instance: CipherVaultApp

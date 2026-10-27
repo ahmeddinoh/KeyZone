@@ -172,6 +172,16 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
         }
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val app = context.applicationContext as com.ciphervault.app.CipherVaultApp
+    val pendingUris by app.pendingSharedUris.collectAsState()
+
+    LaunchedEffect(pendingUris) {
+        if (pendingUris.isNotEmpty()) {
+            navigateToTab("encrypt")
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = DarkBackground,

@@ -21,11 +21,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.LockClock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -56,6 +59,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -254,7 +258,27 @@ fun LockScreen(authViewModel: AuthViewModel) {
                     enabled = lockoutSeconds == 0,
                     visualTransformation = if (showPassword) VisualTransformation.None
                     else PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Go
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onGo = {
+                            if (input.length >= 4 && !isProcessing && lockoutSeconds == 0) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                if (!authViewModel.unlock(input)) {
+                                    input = ""
+                                }
+                            }
+                        }
+                    ),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Key,
+                            contentDescription = null,
+                            tint = VaultGreen
+                        )
+                    },
                     trailingIcon = {
                         IconButton(onClick = { showPassword = !showPassword }) {
                             Icon(
@@ -427,8 +451,16 @@ fun LockScreen(authViewModel: AuthViewModel) {
                             strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(10.dp))
+                        Text("Unlocking...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.LockOpen,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Unlock Vault", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
-                    Text("Unlock Vault", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
 
                 if (isBiometricEnabled) {

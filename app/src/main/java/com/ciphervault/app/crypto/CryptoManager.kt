@@ -115,24 +115,26 @@ class CryptoManager {
      * significantly shrinking text, documents, PDFs, and database files.
      */
     fun encrypt(inputStream: InputStream, outputStream: OutputStream, key: ByteArray) {
-        val plainData = inputStream.readBytes()
-        val compressedData = compressGzip(plainData)
-        val isCompressed = compressedData.isNotEmpty() && compressedData.size < plainData.size
-        val dataToEncrypt = if (isCompressed) compressedData else plainData
-
         val secretKey = SecretKeySpec(key, "AES")
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, secretKey)
 
         val iv = cipher.iv
-        if (isCompressed) {
-            outputStream.write(FLAG_COMPRESSED_V2.toInt() and 0xFF)
-        }
         outputStream.write(iv.size)
         outputStream.write(iv)
 
-        val encryptedData = cipher.doFinal(dataToEncrypt)
-        outputStream.write(encryptedData)
+        val buffer = ByteArray(8192)
+        var read: Int
+        while (inputStream.read(buffer).also { read = it } != -1) {
+            val output = cipher.update(buffer, 0, read)
+            if (output != null) {
+                outputStream.write(output)
+            }
+        }
+        val finalOutput = cipher.doFinal()
+        if (finalOutput != null) {
+            outputStream.write(finalOutput)
+        }
         outputStream.flush()
     }
 
@@ -162,16 +164,25 @@ class CryptoManager {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
 
-        val encryptedData = inputStream.readBytes()
-        val decryptedData = cipher.doFinal(encryptedData)
-
-        val finalPlainData = if (isCompressed) {
-            decompressGzip(decryptedData)
+        if (isCompressed) {
+            val encryptedData = inputStream.readBytes()
+            val decryptedData = cipher.doFinal(encryptedData)
+            val finalPlainData = decompressGzip(decryptedData)
+            outputStream.write(finalPlainData)
         } else {
-            decryptedData
+            val buffer = ByteArray(8192)
+            var read: Int
+            while (inputStream.read(buffer).also { read = it } != -1) {
+                val output = cipher.update(buffer, 0, read)
+                if (output != null) {
+                    outputStream.write(output)
+                }
+            }
+            val finalOutput = cipher.doFinal()
+            if (finalOutput != null) {
+                outputStream.write(finalOutput)
+            }
         }
-
-        outputStream.write(finalPlainData)
         outputStream.flush()
     }
 

@@ -1,6 +1,9 @@
 package com.ciphervault.app
 
 import android.os.Bundle
+import android.os.Parcelable
+import android.content.Intent
+import android.net.Uri
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,6 +21,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleIntent(intent)
         applyScreenSecurity()
         enableEdgeToEdge()
         setContent {
@@ -32,6 +36,26 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        intent ?: return
+        val uris = mutableListOf<Uri>()
+        if (intent.action == Intent.ACTION_SEND) {
+            (intent.getParcelableExtra<android.os.Parcelable>(Intent.EXTRA_STREAM) as? Uri)?.let { uris.add(it) }
+        } else if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            intent.getParcelableArrayListExtra<android.os.Parcelable>(Intent.EXTRA_STREAM)?.forEach { parcelable ->
+                (parcelable as? Uri)?.let { uris.add(it) }
+            }
+        }
+        if (uris.isNotEmpty()) {
+            app.pendingSharedUris.value = uris
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         applyScreenSecurity()
@@ -39,6 +63,10 @@ class MainActivity : FragmentActivity() {
 
     override fun onStop() {
         super.onStop()
+        if (app.ignoreNextBackgroundLock) {
+            app.ignoreNextBackgroundLock = false
+            return
+        }
         // Auto-lock vault when placed in background if enabled in settings
         if (app.vaultConfig.autoLockOnBackground && app.vaultConfig.isInitialized) {
             app.lockVault()

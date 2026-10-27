@@ -66,6 +66,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.LaunchedEffect
 import com.ciphervault.app.CipherVaultApp
 import com.ciphervault.app.ui.theme.CardBorder
 import com.ciphervault.app.ui.theme.CardBorderSubtle
@@ -110,26 +111,35 @@ fun EncryptScreen(vaultViewModel: VaultViewModel) {
     var batchProgress by remember { mutableFloatStateOf(0f) }
     var currentProcessingFile by remember { mutableStateOf("") }
 
+    val pendingUris by app.pendingSharedUris.collectAsState()
+    
+    fun processSelectedUri(uri: Uri) {
+        if (selectedFiles.any { it.uri == uri }) return
+        var fileName = "Unknown file"
+        var fileSize = 0L
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                if (nameIndex != -1) fileName = cursor.getString(nameIndex) ?: fileName
+                if (sizeIndex != -1 && !cursor.isNull(sizeIndex)) fileSize = cursor.getLong(sizeIndex)
+            }
+        }
+        val mimeType = context.contentResolver.getType(uri)
+        selectedFiles.add(SelectedFile(uri, fileName, fileSize, mimeType))
+    }
+
+    LaunchedEffect(pendingUris) {
+        if (pendingUris.isNotEmpty()) {
+            pendingUris.forEach { processSelectedUri(it) }
+            app.pendingSharedUris.value = emptyList()
+        }
+    }
+
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
-        uris.forEach { uri ->
-            var fileName = "Unknown file"
-            var fileSize = 0L
-            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-                    if (nameIndex != -1) fileName = cursor.getString(nameIndex) ?: fileName
-                    if (sizeIndex != -1 && !cursor.isNull(sizeIndex)) fileSize = cursor.getLong(sizeIndex)
-                }
-            }
-            val mimeType = context.contentResolver.getType(uri)
-
-            if (selectedFiles.none { it.uri == uri }) {
-                selectedFiles.add(SelectedFile(uri, fileName, fileSize, mimeType))
-            }
-        }
+        uris.forEach { processSelectedUri(it) }
     }
 
     val totalSelectedSize = selectedFiles.sumOf { it.size }
@@ -192,7 +202,12 @@ fun EncryptScreen(vaultViewModel: VaultViewModel) {
                     ),
                 colors = CardDefaults.cardColors(containerColor = DarkCard),
                 shape = RoundedCornerShape(20.dp),
-                onClick = { if (!isBatchEncrypting) filePickerLauncher.launch(arrayOf("*/*")) }
+                onClick = { 
+                    if (!isBatchEncrypting) {
+                        app.ignoreNextBackgroundLock = true
+                        filePickerLauncher.launch(arrayOf("*/*")) 
+                    }
+                }
             ) {
                 Column(
                     modifier = Modifier
@@ -237,7 +252,10 @@ fun EncryptScreen(vaultViewModel: VaultViewModel) {
                     Spacer(modifier = Modifier.height(16.dp))
 
                     OutlinedButton(
-                        onClick = { filePickerLauncher.launch(arrayOf("*/*")) },
+                        onClick = { 
+                            app.ignoreNextBackgroundLock = true
+                            filePickerLauncher.launch(arrayOf("*/*")) 
+                        },
                         enabled = !isBatchEncrypting,
                         shape = RoundedCornerShape(12.dp),
                         border = androidx.compose.foundation.BorderStroke(1.dp, VaultGreen.copy(alpha = 0.6f))

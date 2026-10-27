@@ -36,6 +36,9 @@ interface EncryptedFileDao {
     @Query("UPDATE encrypted_files SET originalFileName = :newName WHERE id = :id")
     suspend fun renameFile(id: Long, newName: String)
 
+    @Query("UPDATE encrypted_files SET tags = :tags WHERE id = :id")
+    suspend fun updateTags(id: Long, tags: String)
+
     @Query("SELECT COUNT(*) FROM encrypted_files")
     fun getFileCount(): Flow<Int>
 

@@ -28,5 +28,8 @@ data class EncryptedFileEntity(
     val encryptedAt: Long = System.currentTimeMillis(),
 
     /** User-defined category for organization */
-    val category: String = "General"
+    val category: String = "General",
+
+    /** Comma-separated list of tags */
+    val tags: String = ""
 )
