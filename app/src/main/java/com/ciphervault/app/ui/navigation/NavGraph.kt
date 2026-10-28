@@ -239,7 +239,9 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
             composable("vault") {
                 VaultScreen(
                     vaultViewModel = vaultViewModel,
-                    onNavigateToEncrypt = { navigateToTab("encrypt") }
+                    onNavigateToEncrypt = { navigateToTab("encrypt") },
+                    onNavigateToImagePreview = { id -> navController.navigate("image_preview/$id") },
+                    onNavigateToMediaPreview = { id -> navController.navigate("media_preview/$id") }
                 )
             }
             composable("encrypt") {
@@ -257,6 +259,26 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
                     backupViewModel = backupViewModel,
                     onBack = { navController.popBackStack() }
                 )
+            }
+            composable("image_preview/{fileId}") { backStackEntry ->
+                val fileId = backStackEntry.arguments?.getString("fileId")?.toLongOrNull()
+                if (fileId != null) {
+                    com.ciphervault.app.ui.screens.ImagePreviewScreen(
+                        vaultViewModel = vaultViewModel,
+                        fileId = fileId,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+            }
+            composable("media_preview/{fileId}") { backStackEntry ->
+                val fileId = backStackEntry.arguments?.getString("fileId")?.toLongOrNull()
+                if (fileId != null) {
+                    com.ciphervault.app.ui.screens.MediaPreviewScreen(
+                        vaultViewModel = vaultViewModel,
+                        fileId = fileId,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
             }
         }
     }

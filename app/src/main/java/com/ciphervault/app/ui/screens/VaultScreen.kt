@@ -117,7 +117,9 @@ private val CATEGORIES = listOf("All", "Images", "Documents", "Videos", "Audio",
 @Composable
 fun VaultScreen(
     vaultViewModel: VaultViewModel,
-    onNavigateToEncrypt: (() -> Unit)? = null
+    onNavigateToEncrypt: (() -> Unit)? = null,
+    onNavigateToImagePreview: ((Long) -> Unit)? = null,
+    onNavigateToMediaPreview: ((Long) -> Unit)? = null
 ) {
     val files by vaultViewModel.files.collectAsState()
     val isLoading by vaultViewModel.isLoading.collectAsState()
@@ -426,8 +428,13 @@ fun VaultScreen(
                             file = file,
                             onClick = { selectedFileForDetails = file },
                             onDecrypt = {
+                                val mime = file.mimeType ?: ""
                                 if (file.originalFileName.endsWith(".note.txt")) {
                                     vaultViewModel.viewSecureNote(file, context)
+                                } else if (mime.startsWith("image/") && onNavigateToImagePreview != null) {
+                                    onNavigateToImagePreview(file.id)
+                                } else if ((mime.startsWith("video/") || mime.startsWith("audio/")) && onNavigateToMediaPreview != null) {
+                                    onNavigateToMediaPreview(file.id)
                                 } else {
                                     vaultViewModel.decryptFile(file)
                                 }
@@ -533,8 +540,13 @@ fun VaultScreen(
                 // Action 1: Open Decrypted Preview
                 OutlinedButton(
                     onClick = {
+                        val mime = file.mimeType ?: ""
                         if (file.originalFileName.endsWith(".note.txt")) {
                             vaultViewModel.viewSecureNote(file, context)
+                        } else if (mime.startsWith("image/") && onNavigateToImagePreview != null) {
+                            onNavigateToImagePreview(file.id)
+                        } else if ((mime.startsWith("video/") || mime.startsWith("audio/")) && onNavigateToMediaPreview != null) {
+                            onNavigateToMediaPreview(file.id)
                         } else {
                             vaultViewModel.decryptFile(file)
                         }

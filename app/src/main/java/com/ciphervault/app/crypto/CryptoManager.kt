@@ -32,7 +32,7 @@ import javax.crypto.spec.SecretKeySpec
  */
 class CryptoManager {
 
-    private val keyStore = KeyStore.getInstance(KEYSTORE_TYPE).apply { load(null) }
+    private val keyStore by lazy { KeyStore.getInstance(KEYSTORE_TYPE).apply { load(null) } }
 
     // ══════════════════════════════════════════════
     //  PBKDF2 Key Derivation
@@ -162,7 +162,7 @@ class CryptoManager {
 
         val secretKey = SecretKeySpec(key, "AES")
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(GCM_TAG_LENGTH, iv))
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
 
         if (isCompressed) {
             val encryptedData = inputStream.readBytes()
@@ -262,7 +262,7 @@ class CryptoManager {
         val encrypted = data.copyOfRange(1 + ivSize, data.size)
 
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(GCM_TAG_LENGTH, iv))
+        cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, iv))
         return cipher.doFinal(encrypted)
     }
 
@@ -297,8 +297,8 @@ class CryptoManager {
     companion object {
         private const val KEYSTORE_TYPE = "AndroidKeyStore"
         private const val KEYSTORE_ALIAS = "CipherVault_TOTP_Key"
-        private const val TRANSFORMATION = "AES/GCM/NoPadding"
-        private const val GCM_TAG_LENGTH = 128 // bits
+        const val TRANSFORMATION = "AES/GCM/NoPadding"
+        const val GCM_TAG_LENGTH = 128 // bits
         private const val MASTER_KEY_SIZE = 32 // 256 bits
         private const val SALT_SIZE = 32
         private const val PBKDF2_ALGORITHM = "PBKDF2WithHmacSHA256"
@@ -307,6 +307,6 @@ class CryptoManager {
         private const val KEY_VERIFICATION_PLAINTEXT = "CIPHERVAULT_KEY_OK_v1"
 
         // Format version / compression flags
-        private const val FLAG_COMPRESSED_V2: Byte = 0xF1.toByte()
+        const val FLAG_COMPRESSED_V2: Byte = 0xF1.toByte()
     }
 }

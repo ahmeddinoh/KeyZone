@@ -133,6 +133,29 @@ class FileRepository(
         }
     }
 
+    suspend fun decryptFileToByteArray(
+        entity: EncryptedFileEntity,
+        masterKey: ByteArray
+    ): Result<ByteArray> = withContext(Dispatchers.IO) {
+        try {
+            val encryptedFile = File(vaultDir, entity.encryptedFileName)
+            if (!encryptedFile.exists()) {
+                return@withContext Result.failure(Exception("Encrypted file not found on disk"))
+            }
+
+            val outputStream = java.io.ByteArrayOutputStream()
+            encryptedFile.inputStream().use { input ->
+                outputStream.use { output ->
+                    cryptoManager.decrypt(input, output, masterKey)
+                }
+            }
+
+            Result.success(outputStream.toByteArray())
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     /**
      * Decrypts a file directly into a destination URI selected by user via SAF.
      */

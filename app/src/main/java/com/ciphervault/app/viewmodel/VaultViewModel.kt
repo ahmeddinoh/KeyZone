@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.ciphervault.app.CipherVaultApp
 import com.ciphervault.app.data.db.EncryptedFileEntity
 import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -101,6 +102,16 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    suspend fun decryptToByteArray(entity: EncryptedFileEntity): ByteArray? {
+        var result: ByteArray? = null
+        _isLoading.value = true
+        repository.decryptFileToByteArray(entity, masterKey)
+            .onSuccess { result = it }
+            .onFailure { _toastMessage.value = "Decryption failed: ${it.message}" }
+        _isLoading.value = false
+        return result
+    }
+
     fun exportDecryptedFile(entity: EncryptedFileEntity, destinationUri: Uri) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -185,4 +196,23 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearToast() { _toastMessage.value = null }
     fun clearDecryptedUri() { _decryptedUri.value = null }
+
+    fun deleteDecryptedCacheFile(uri: Uri, context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // The uri looks like content://com.ciphervault.app.fileprovider/cache/decrypted/filename.ext
+                val path = uri.path
+                if (path != null && path.contains("cache/decrypted/")) {
+                    val filename = path.substringAfterLast("/")
+                    val cacheDir = File(context.cacheDir, "decrypted")
+                    val fileToDelete = File(cacheDir, filename)
+                    if (fileToDelete.exists()) {
+                        fileToDelete.delete()
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore exceptions during cleanup
+            }
+        }
+    }
 }
