@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -55,7 +56,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             SortOption.SIZE_DESC -> fileList.sortedByDescending { it.originalSize }
             SortOption.SIZE_ASC -> fileList.sortedBy { it.originalSize }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.flowOn(Dispatchers.Default)
+    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val fileCount: StateFlow<Int> = repository.fileCount
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
@@ -79,13 +81,17 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         _sortOption.value = option
     }
 
+    suspend fun encryptFileSuspend(uri: Uri, fileName: String, mimeType: String?, deleteOriginal: Boolean = false) {
+        _isLoading.value = true
+        repository.encryptFile(uri, fileName, mimeType, masterKey, deleteOriginal)
+            .onSuccess { _toastMessage.value = "\"${it.originalFileName}\" encrypted" }
+            .onFailure { _toastMessage.value = "Encryption failed: ${it.message}" }
+        _isLoading.value = false
+    }
+
     fun encryptFile(uri: Uri, fileName: String, mimeType: String?, deleteOriginal: Boolean = false) {
         viewModelScope.launch {
-            _isLoading.value = true
-            repository.encryptFile(uri, fileName, mimeType, masterKey, deleteOriginal)
-                .onSuccess { _toastMessage.value = "\"${it.originalFileName}\" encrypted" }
-                .onFailure { _toastMessage.value = "Encryption failed: ${it.message}" }
-            _isLoading.value = false
+            encryptFileSuspend(uri, fileName, mimeType, deleteOriginal)
         }
     }
 

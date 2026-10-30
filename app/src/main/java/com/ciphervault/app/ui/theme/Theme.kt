@@ -1,56 +1,55 @@
 package com.ciphervault.app.ui.theme
 
 import android.app.Activity
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 
-private val CipherVaultColorScheme = darkColorScheme(
-    primary = VaultGreen,
-    onPrimary = Color.Black,
-    primaryContainer = VaultGreenDark,
-    onPrimaryContainer = Color.White,
-    secondary = CyanAccent,
-    onSecondary = Color.Black,
-    secondaryContainer = CyanAccent.copy(alpha = 0.2f),
-    onSecondaryContainer = CyanAccent,
-    tertiary = BlueAccent,
-    onTertiary = Color.White,
-    background = DarkBackground,
-    onBackground = TextPrimary,
-    surface = DarkSurface,
-    onSurface = TextPrimary,
-    surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = TextSecondary,
-    error = ErrorRed,
-    onError = Color.White,
-    outline = TextDisabled
+private val VaultShapes = Shapes(
+    small = RoundedCornerShape(14.dp),  // icon tiles
+    medium = RoundedCornerShape(22.dp), // cards
+    large = RoundedCornerShape(28.dp),  // drop zone
+)
+
+private val VaultColorScheme = darkColorScheme(
+    primary = VaultColors.Accent,
+    onPrimary = VaultColors.OnAccent,
+    background = VaultColors.Ground,
+    onBackground = VaultColors.TextPrimary,
+    surface = VaultColors.Surface,
+    onSurface = VaultColors.TextPrimary,
+    surfaceVariant = VaultColors.SurfaceRaised,
+    onSurfaceVariant = VaultColors.TextSecondary,
+    outline = VaultColors.Hairline,
+    // Add these for legacy compatibility
+    error = VaultColors.ErrorRed,
+    secondary = VaultColors.Accent,
+    tertiary = VaultColors.Accent
 )
 
 @Composable
-fun CipherVaultTheme(
-    content: @Composable () -> Unit
-) {
-    val colorScheme = CipherVaultColorScheme
+fun CipherVaultTheme(content: @Composable () -> Unit) {
     val view = LocalView.current
-
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = DarkBackground.toArgb()
-            window.navigationBarColor = DarkSurface.toArgb()
+            window.statusBarColor = VaultColors.Ground.toArgb()
+            window.navigationBarColor = VaultColors.Ground.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
         }
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = VaultColorScheme,
         typography = CipherVaultTypography,
-        content = content
+        shapes = VaultShapes,
+        content = content,
     )
 }

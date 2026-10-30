@@ -4,17 +4,37 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -26,9 +46,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -36,6 +64,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.ciphervault.app.ui.components.FloatingNavPill
+import com.ciphervault.app.ui.components.VaultTab
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 import com.ciphervault.app.ui.screens.BackupScreen
 import com.ciphervault.app.ui.screens.EncryptScreen
 import com.ciphervault.app.ui.screens.HomeScreen
@@ -145,9 +177,11 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
     val vaultViewModel: VaultViewModel = viewModel()
     val backupViewModel: BackupViewModel = viewModel()
 
+    val hazeState = remember { HazeState() }
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
-    val currentRoute = currentDestination?.route
+    val currentRoute = navBackStackEntry?.destination?.route
+    val currentTab = VaultTab.fromRoute(currentRoute)
 
     val snackbarHostState = remember { SnackbarHostState() }
     val toastMessage by vaultViewModel.toastMessage.collectAsState()
@@ -160,6 +194,20 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
     }
 
     val showBottomBar = currentRoute in listOf("home", "vault", "encrypt", "settings")
+
+    val isBottomBarVisible = remember { mutableStateOf(true) }
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y < -15f) {
+                    isBottomBarVisible.value = false
+                } else if (available.y > 15f) {
+                    isBottomBarVisible.value = true
+                }
+                return Offset.Zero
+            }
+        }
+    }
 
     // Clean tab navigation that preserves backstack integrity and avoids destination stacking
     val navigateToTab: (String) -> Unit = { route ->
@@ -183,103 +231,92 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(nestedScrollConnection),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = DarkBackground,
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar(
-                    containerColor = DarkSurfaceVariant,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier.border(
-                        width = 1.dp,
-                        color = com.ciphervault.app.ui.theme.CardBorderSubtle
+        containerColor = com.ciphervault.app.ui.theme.VaultColors.Ground,
+    ) { paddingValues ->
+        Box(Modifier.fillMaxSize()) {
+            NavHost(
+                navController = navController,
+                startDestination = "home",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = paddingValues.calculateTopPadding())
+                    .haze(state = hazeState)
+            ) {
+                composable("home") {
+                    HomeScreen(
+                        vaultViewModel = vaultViewModel,
+                        onNavigateToTab = navigateToTab,
+                        onNavigateToBackup = { navController.navigate("backup") }
                     )
-                ) {
-                    navItems.forEach { item ->
-                        val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
-                        NavigationBarItem(
-                            icon = {
-                                Icon(
-                                    imageVector = item.icon,
-                                    contentDescription = item.label
-                                )
-                            },
-                            label = { Text(item.label) },
-                            selected = isSelected,
-                            onClick = {
-                                if (!isSelected) {
-                                    navigateToTab(item.route)
-                                }
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = VaultGreen,
-                                selectedTextColor = VaultGreen,
-                                indicatorColor = VaultGreenDark.copy(alpha = 0.15f),
-                                unselectedIconColor = TextSecondary,
-                                unselectedTextColor = TextSecondary
-                            )
+                }
+                composable("vault") {
+                    VaultScreen(
+                        vaultViewModel = vaultViewModel,
+                        onNavigateToEncrypt = { navigateToTab("encrypt") },
+                        onNavigateToImagePreview = { id -> navController.navigate("image_preview/$id") },
+                        onNavigateToMediaPreview = { id -> navController.navigate("media_preview/$id") }
+                    )
+                }
+                composable("encrypt") {
+                    EncryptScreen(vaultViewModel = vaultViewModel)
+                }
+                composable("settings") {
+                    SettingsScreen(
+                        authViewModel = authViewModel,
+                        vaultViewModel = vaultViewModel,
+                        onNavigateToBackup = { navController.navigate("backup") },
+                        onNavigateToChangeKey = { navController.navigate("change_key") }
+                    )
+                }
+                composable("change_key") {
+                    com.ciphervault.app.ui.screens.ChangeKeyScreen(
+                        authViewModel = authViewModel,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                composable("backup") {
+                    BackupScreen(
+                        backupViewModel = backupViewModel,
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+                composable("image_preview/{fileId}") { backStackEntry ->
+                    val fileId = backStackEntry.arguments?.getString("fileId")?.toLongOrNull()
+                    if (fileId != null) {
+                        com.ciphervault.app.ui.screens.ImagePreviewScreen(
+                            vaultViewModel = vaultViewModel,
+                            fileId = fileId,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
+                }
+                composable("media_preview/{fileId}") { backStackEntry ->
+                    val fileId = backStackEntry.arguments?.getString("fileId")?.toLongOrNull()
+                    if (fileId != null) {
+                        com.ciphervault.app.ui.screens.MediaPreviewScreen(
+                            vaultViewModel = vaultViewModel,
+                            fileId = fileId,
+                            onBack = { navController.popBackStack() }
                         )
                     }
                 }
             }
-        }
-    ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = "home",
-            modifier = Modifier.padding(paddingValues)
-        ) {
-            composable("home") {
-                HomeScreen(
-                    vaultViewModel = vaultViewModel,
-                    onNavigateToTab = navigateToTab,
-                    onNavigateToBackup = { navController.navigate("backup") }
+
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showBottomBar && isBottomBarVisible.value,
+                enter = slideInVertically(initialOffsetY = { it * 2 }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it * 2 }) + fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
+                FloatingNavPill(
+                    selected = currentTab,
+                    onSelect = { tab -> navigateToTab(tab.route) },
+                    hazeState = hazeState,
                 )
-            }
-            composable("vault") {
-                VaultScreen(
-                    vaultViewModel = vaultViewModel,
-                    onNavigateToEncrypt = { navigateToTab("encrypt") },
-                    onNavigateToImagePreview = { id -> navController.navigate("image_preview/$id") },
-                    onNavigateToMediaPreview = { id -> navController.navigate("media_preview/$id") }
-                )
-            }
-            composable("encrypt") {
-                EncryptScreen(vaultViewModel = vaultViewModel)
-            }
-            composable("settings") {
-                SettingsScreen(
-                    authViewModel = authViewModel,
-                    vaultViewModel = vaultViewModel,
-                    onNavigateToBackup = { navController.navigate("backup") }
-                )
-            }
-            composable("backup") {
-                BackupScreen(
-                    backupViewModel = backupViewModel,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            composable("image_preview/{fileId}") { backStackEntry ->
-                val fileId = backStackEntry.arguments?.getString("fileId")?.toLongOrNull()
-                if (fileId != null) {
-                    com.ciphervault.app.ui.screens.ImagePreviewScreen(
-                        vaultViewModel = vaultViewModel,
-                        fileId = fileId,
-                        onBack = { navController.popBackStack() }
-                    )
-                }
-            }
-            composable("media_preview/{fileId}") { backStackEntry ->
-                val fileId = backStackEntry.arguments?.getString("fileId")?.toLongOrNull()
-                if (fileId != null) {
-                    com.ciphervault.app.ui.screens.MediaPreviewScreen(
-                        vaultViewModel = vaultViewModel,
-                        fileId = fileId,
-                        onBack = { navController.popBackStack() }
-                    )
-                }
             }
         }
     }
 }
+

@@ -2,14 +2,11 @@ package com.ciphervault.app.crypto
 
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.security.KeyStore
 import java.security.SecureRandom
 import java.util.zip.GZIPInputStream
-import java.util.zip.GZIPOutputStream
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -165,10 +162,14 @@ class CryptoManager {
         cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(128, iv))
 
         if (isCompressed) {
-            val encryptedData = inputStream.readBytes()
-            val decryptedData = cipher.doFinal(encryptedData)
-            val finalPlainData = decompressGzip(decryptedData)
-            outputStream.write(finalPlainData)
+            val cipherInputStream = javax.crypto.CipherInputStream(inputStream, cipher)
+            GZIPInputStream(cipherInputStream).use { gzipIn ->
+                val buffer = ByteArray(8192)
+                var read: Int
+                while (gzipIn.read(buffer).also { read = it } != -1) {
+                    outputStream.write(buffer, 0, read)
+                }
+            }
         } else {
             val buffer = ByteArray(8192)
             var read: Int
@@ -267,21 +268,8 @@ class CryptoManager {
     }
 
     // ══════════════════════════════════════════════
-    //  Helpers & Compression
+    //  Helpers
     // ══════════════════════════════════════════════
-
-    private fun compressGzip(data: ByteArray): ByteArray {
-        if (data.isEmpty()) return ByteArray(0)
-        val bos = ByteArrayOutputStream()
-        GZIPOutputStream(bos).use { it.write(data) }
-        return bos.toByteArray()
-    }
-
-    private fun decompressGzip(data: ByteArray): ByteArray {
-        if (data.isEmpty()) return ByteArray(0)
-        val bis = ByteArrayInputStream(data)
-        return GZIPInputStream(bis).use { it.readBytes() }
-    }
 
     private fun readFully(input: InputStream, length: Int): ByteArray {
         val buffer = ByteArray(length)

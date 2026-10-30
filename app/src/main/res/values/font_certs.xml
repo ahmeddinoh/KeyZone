@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="my_font_certs">
+        <item>@array/my_font_certs_dev</item>
+    </array>
+    <string-array name="my_font_certs_dev">
+        <item>
+            MIIEQzCCAyugAwIBAgIJAMLgh0ZkSjCNMA0GCSqGSIb3DQEBBAUAMHQxCzAJBgNVBAYTAlVTMRMwEQYD
+            VQQIEwpDYWxpZm9ybmlhMRYwFAYDVQQHEw1Nb3VudGFpbiBWaWV3MRQwEgYDVQQKEwtHb29nbGUgSW5j
+            MRQwEgYDVQQLEwtFbnRlcnByaXNlMRIwEAYDVQQDEwlHb29nbGUgSW5jMB4XDTA4MTAyMjE2Nzg1NVoX
+            DTE4MTAyMjE2Nzg1NVowdDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcT
+            DU1vdW50YWluIFZpZXcxFDASBgNVBAoTC0dvb2dsZSBJbmMxFDASBgNVBAsTC0VudGVycHJpc2UxEjAQ
+            BgNVBAMTCUdvb2dsZSBJbmMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDSDsKWl4B9sK+c
+            h/x91EIDZ3Nf4c7d0H33m428c+eZ3B/8J3Q+1mF8jH/oM8Z5F5Xk9Z9O6zE+t/jO5W8J3w7z9K/7a4E
+            8+5B+e3B+9Z3D/6Z3F+5b3H/4a3J+3c3L/2d3N+1e3P/0f3R+zG3T+yH3V+xI3X+wJ3Z+vK3b+uL3d
+            +tM3f+sN3h+rO3j+qP3l+pO3n+oQ3p+nP3r+mQ3t+lR3v+kS3x+jT3z+iU31+hV33+gW35+fX37+eY
+            39+dZ3/+c
+        </item>
+    </string-array>
+</resources>
