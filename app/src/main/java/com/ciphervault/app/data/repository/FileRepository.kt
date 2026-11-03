@@ -48,7 +48,8 @@ class FileRepository(
         originalFileName: String,
         mimeType: String?,
         masterKey: ByteArray,
-        deleteOriginal: Boolean = false
+        deleteOriginal: Boolean = false,
+        onProgress: ((Float) -> Unit)? = null
     ): Result<EncryptedFileEntity> = withContext(Dispatchers.IO) {
         try {
             val encryptedFileName = UUID.randomUUID().toString() + ".enc"
@@ -56,11 +57,18 @@ class FileRepository(
 
             // Query original file size
             var originalSize = 0L
-            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-                    if (sizeIndex != -1 && !cursor.isNull(sizeIndex)) {
-                        originalSize = cursor.getLong(sizeIndex)
+            if (uri.scheme == "file") {
+                val file = File(uri.path ?: "")
+                if (file.exists()) {
+                    originalSize = file.length()
+                }
+            } else {
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+                        if (sizeIndex != -1 && !cursor.isNull(sizeIndex)) {
+                            originalSize = cursor.getLong(sizeIndex)
+                        }
                     }
                 }
             }
@@ -70,7 +78,7 @@ class FileRepository(
 
             encryptedFile.outputStream().use { outputStream ->
                 inputStream.use { input ->
-                    cryptoManager.encrypt(input, outputStream, masterKey)
+                    cryptoManager.encrypt(input, outputStream, masterKey, originalSize, onProgress)
                 }
             }
 

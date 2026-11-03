@@ -33,11 +33,8 @@ data class BackupInfo(
 
 data class BackupStats(
     val rawVaultSizeBytes: Long,
-    val compressedBackupSizeBytes: Long,
-    val fileCount: Int,
-    val spaceSavedBytes: Long,
-    val savingsPercentage: Int,
-    val compressionLevelName: String = "DEFLATE (Maximum Level 9)"
+    val backupSizeBytes: Long,
+    val fileCount: Int
 )
 
 /**
@@ -104,8 +101,9 @@ class VaultBackupManager(
     }
 
     /**
-     * Writes the backup ZIP archive using Deflater.BEST_COMPRESSION (Level 9)
-     * and compact JSON serialization to produce the smallest possible backup archive.
+     * Writes the backup ZIP archive using Deflater.NO_COMPRESSION to package the already encrypted files.
+     * Encrypted files have maximum entropy, so compression is mathematically ineffective,
+     * and attempting it only wastes battery and CPU time.
      */
     private fun writeZipArchive(
         outputStream: java.io.OutputStream,
@@ -114,8 +112,8 @@ class VaultBackupManager(
     ) {
         val buffered = BufferedOutputStream(outputStream)
         ZipOutputStream(buffered).use { zip ->
-            // Enforce maximum DEFLATE compression (Level 9)
-            zip.setLevel(Deflater.BEST_COMPRESSION)
+            // Disable compression since payload is already AES-GCM encrypted
+            zip.setLevel(Deflater.NO_COMPRESSION)
 
             // Compact manifest (zero formatting whitespace)
             zip.putNextEntry(ZipEntry("manifest.json"))
@@ -167,19 +165,11 @@ class VaultBackupManager(
         }
 
         val effectiveRawSize = if (rawVaultSizeBytes > 0) rawVaultSizeBytes else estimatedBackupSize
-        val spaceSavedBytes = maxOf(0L, effectiveRawSize - estimatedBackupSize)
-        val savingsPercentage = if (effectiveRawSize > 0 && spaceSavedBytes > 0) {
-            ((spaceSavedBytes.toDouble() / effectiveRawSize) * 100).toInt()
-        } else {
-            0
-        }
 
         BackupStats(
             rawVaultSizeBytes = effectiveRawSize,
-            compressedBackupSizeBytes = estimatedBackupSize,
-            fileCount = fileCount,
-            spaceSavedBytes = spaceSavedBytes,
-            savingsPercentage = savingsPercentage
+            backupSizeBytes = estimatedBackupSize,
+            fileCount = fileCount
         )
     }
 
@@ -191,7 +181,7 @@ class VaultBackupManager(
      */
     suspend fun createBackup(masterKey: ByteArray): Uri = withContext(Dispatchers.IO) {
         val backupDir = File(context.cacheDir, "backups").also { it.mkdirs() }
-        val backupFile = File(backupDir, "CipherVault_${System.currentTimeMillis()}.cvault")
+        val backupFile = File(backupDir, "KeyZone_${System.currentTimeMillis()}.cvault")
 
         val files = fileRepository.allFiles.first()
         val manifest = buildManifest(files, masterKey)
@@ -321,113 +311,129 @@ class VaultBackupManager(
             val inputStream = context.contentResolver.openInputStream(backupUri)
                 ?: return@withContext Result.failure(Exception("Cannot open backup file"))
 
-            // ── Parse ZIP ──
-            var manifest: JSONObject? = null
-            val fileDataMap = mutableMapOf<String, ByteArray>()
+            val tempDir = File(context.cacheDir, "import_temp_${System.currentTimeMillis()}")
+            tempDir.mkdirs()
 
-            ZipInputStream(inputStream).use { zip ->
-                var entry = zip.nextEntry
-                while (entry != null) {
-                    when {
-                        entry.name == "manifest.json" ->
-                            manifest = JSONObject(String(zip.readBytes(), Charsets.UTF_8))
-                        entry.name.startsWith("vault/") -> {
-                            val name = entry.name.removePrefix("vault/")
-                            if (name.isNotEmpty()) fileDataMap[name] = zip.readBytes()
+            var manifest: JSONObject? = null
+
+            try {
+                ZipInputStream(inputStream).use { zip ->
+                    val buffer = ByteArray(32768)
+                    var entry = zip.nextEntry
+                    while (entry != null) {
+                        when {
+                            entry.name == "manifest.json" ->
+                                manifest = JSONObject(String(zip.readBytes(), Charsets.UTF_8))
+                            entry.name.startsWith("vault/") -> {
+                                val name = entry.name.removePrefix("vault/")
+                                if (name.isNotEmpty()) {
+                                    val outFile = File(tempDir, name)
+                                    outFile.outputStream().use { out ->
+                                        var read: Int
+                                        while (zip.read(buffer).also { read = it } != -1) {
+                                            out.write(buffer, 0, read)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        zip.closeEntry()
+                        entry = zip.nextEntry
+                    }
+                }
+
+                val m = manifest
+                    ?: return@withContext Result.failure(Exception("Invalid backup: missing manifest"))
+
+                // ── Step 1: Verify PIN/password ──
+                val salt = decB64(m.getString("salt"))
+                val wrappedMasterKey = decB64(m.getString("wrappedMasterKey"))
+                val keyVerification = decB64(m.getString("keyVerification"))
+
+                val derivedKey = cryptoManager.deriveKey(password, salt)
+                if (!cryptoManager.verifyKey(keyVerification, derivedKey)) {
+                    derivedKey.fill(0)
+                    return@withContext Result.failure(Exception("Incorrect PIN or password"))
+                }
+
+                val masterKey = cryptoManager.unwrapKey(wrappedMasterKey, derivedKey)
+                derivedKey.fill(0)
+
+                // ── Step 2: Verify TOTP ──
+                if (m.has("totpSecretEncrypted")) {
+                    val encTotp = decB64(m.getString("totpSecretEncrypted"))
+                    val totpSecret = totpManager.decryptSecretFromBackup(encTotp, masterKey)
+
+                    // Try TOTP code first
+                    val totpResult = TotpEngine.verify(totpSecret, totpCode)
+                    if (!totpResult.valid) {
+                        // Try as recovery code
+                        val recoveryHashes = mutableSetOf<String>()
+                        if (m.has("recoveryCodesHashed")) {
+                            val arr = m.getJSONArray("recoveryCodesHashed")
+                            for (i in 0 until arr.length()) recoveryHashes.add(arr.getString(i))
+                        }
+                        recoveryCodeManager.importHashedCodes(recoveryHashes)
+
+                        if (!recoveryCodeManager.verifyAndConsume(totpCode)) {
+                            masterKey.fill(0)
+                            return@withContext Result.failure(
+                                Exception("Invalid verification code or recovery code")
+                            )
                         }
                     }
-                    zip.closeEntry()
-                    entry = zip.nextEntry
+
+                    // Store TOTP secret locally (KeyStore-encrypted)
+                    totpManager.storeSecretLocally(totpSecret)
+                    totpManager.resetState()
                 }
-            }
 
-            val m = manifest
-                ?: return@withContext Result.failure(Exception("Invalid backup: missing manifest"))
+                // ── Step 3: Import vault configuration ──
+                vaultConfig.keyType = m.getString("keyType")
+                vaultConfig.salt = salt
+                vaultConfig.wrappedMasterKey = wrappedMasterKey
+                vaultConfig.keyVerification = keyVerification
+                vaultConfig.isTotpConfigured = m.has("totpSecretEncrypted")
+                vaultConfig.isInitialized = true
 
-            // ── Step 1: Verify PIN/password ──
-            val salt = decB64(m.getString("salt"))
-            val wrappedMasterKey = decB64(m.getString("wrappedMasterKey"))
-            val keyVerification = decB64(m.getString("keyVerification"))
+                // ── Step 4: Import encrypted files ──
+                val vaultDir = fileRepository.vaultDir
+                val filesArray = m.getJSONArray("files")
 
-            val derivedKey = cryptoManager.deriveKey(password, salt)
-            if (!cryptoManager.verifyKey(keyVerification, derivedKey)) {
-                derivedKey.fill(0)
-                return@withContext Result.failure(Exception("Incorrect PIN or password"))
-            }
+                for (i in 0 until filesArray.length()) {
+                    val obj = filesArray.getJSONObject(i)
+                    val encFileName = obj.getString("encryptedFileName")
 
-            val masterKey = cryptoManager.unwrapKey(wrappedMasterKey, derivedKey)
-            derivedKey.fill(0)
-
-            // ── Step 2: Verify TOTP ──
-            if (m.has("totpSecretEncrypted")) {
-                val encTotp = decB64(m.getString("totpSecretEncrypted"))
-                val totpSecret = totpManager.decryptSecretFromBackup(encTotp, masterKey)
-
-                // Try TOTP code first
-                val totpResult = TotpEngine.verify(totpSecret, totpCode)
-                if (!totpResult.valid) {
-                    // Try as recovery code
-                    val recoveryHashes = mutableSetOf<String>()
-                    if (m.has("recoveryCodesHashed")) {
-                        val arr = m.getJSONArray("recoveryCodesHashed")
-                        for (i in 0 until arr.length()) recoveryHashes.add(arr.getString(i))
+                    val tempFile = File(tempDir, encFileName)
+                    if (tempFile.exists()) {
+                        val destFile = File(vaultDir, encFileName)
+                        tempFile.copyTo(destFile, overwrite = true)
                     }
-                    recoveryCodeManager.importHashedCodes(recoveryHashes)
 
-                    if (!recoveryCodeManager.verifyAndConsume(totpCode)) {
-                        masterKey.fill(0)
-                        return@withContext Result.failure(
-                            Exception("Invalid verification code or recovery code")
+                    encryptedFileDao.insertFile(
+                        EncryptedFileEntity(
+                            originalFileName = obj.getString("originalFileName"),
+                            encryptedFileName = encFileName,
+                            mimeType = obj.optString("mimeType").ifEmpty { null },
+                            originalSize = obj.getLong("originalSize"),
+                            encryptedAt = obj.getLong("encryptedAt"),
+                            category = obj.optString("category", "General")
                         )
-                    }
-                }
-
-                // Store TOTP secret locally (KeyStore-encrypted)
-                totpManager.storeSecretLocally(totpSecret)
-                totpManager.resetState()
-            }
-
-            // ── Step 3: Import vault configuration ──
-            vaultConfig.keyType = m.getString("keyType")
-            vaultConfig.salt = salt
-            vaultConfig.wrappedMasterKey = wrappedMasterKey
-            vaultConfig.keyVerification = keyVerification
-            vaultConfig.isTotpConfigured = m.has("totpSecretEncrypted")
-            vaultConfig.isInitialized = true
-
-            // ── Step 4: Import encrypted files ──
-            val vaultDir = fileRepository.vaultDir
-            val filesArray = m.getJSONArray("files")
-
-            for (i in 0 until filesArray.length()) {
-                val obj = filesArray.getJSONObject(i)
-                val encFileName = obj.getString("encryptedFileName")
-
-                fileDataMap[encFileName]?.let { data ->
-                    File(vaultDir, encFileName).writeBytes(data)
-                }
-
-                encryptedFileDao.insertFile(
-                    EncryptedFileEntity(
-                        originalFileName = obj.getString("originalFileName"),
-                        encryptedFileName = encFileName,
-                        mimeType = obj.optString("mimeType").ifEmpty { null },
-                        originalSize = obj.getLong("originalSize"),
-                        encryptedAt = obj.getLong("encryptedAt"),
-                        category = obj.optString("category", "General")
                     )
-                )
-            }
+                }
 
-            // Import remaining recovery codes
-            if (m.has("recoveryCodesHashed")) {
-                val hashes = mutableSetOf<String>()
-                val arr = m.getJSONArray("recoveryCodesHashed")
-                for (i in 0 until arr.length()) hashes.add(arr.getString(i))
-                recoveryCodeManager.importHashedCodes(hashes)
-            }
+                // Import remaining recovery codes
+                if (m.has("recoveryCodesHashed")) {
+                    val hashes = mutableSetOf<String>()
+                    val arr = m.getJSONArray("recoveryCodesHashed")
+                    for (i in 0 until arr.length()) hashes.add(arr.getString(i))
+                    recoveryCodeManager.importHashedCodes(hashes)
+                }
 
-            Result.success(masterKey)
+                Result.success(masterKey)
+            } finally {
+                tempDir.deleteRecursively()
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

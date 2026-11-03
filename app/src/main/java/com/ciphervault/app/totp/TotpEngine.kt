@@ -10,7 +10,7 @@ import kotlin.math.pow
  * RFC 6238 TOTP implementation — fully offline.
  *
  * Generates and verifies Time-Based One-Time Passwords using:
- * - HMAC-SHA1 (compatible with Google Authenticator)
+ * - HMAC-SHA1 (compatible with most Authenticator Apps)
  * - 30-second time period
  * - 6-digit codes
  * - 160-bit (20-byte) secret keys

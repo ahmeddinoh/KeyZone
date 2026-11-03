@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
  * ViewModel for the 2-step vault import workflow:
  * 1. Select .cvault backup file
  * 2. Enter PIN / password (the encryption key)
- * 3. Enter 6-digit TOTP code from Google Authenticator (or recovery code)
+ * 3. Enter 6-digit TOTP code from Authenticator App (or recovery code)
  *
  * Once imported, the app unlocks immediately and on future app launches,
  * only the PIN / password is required (no TOTP code needed for normal app runs).

@@ -93,7 +93,7 @@ class BiometricAuthManager(private val context: Context) {
      */
     fun promptBiometric(
         activity: FragmentActivity,
-        title: String = "Unlock CipherVault",
+        title: String = "Unlock KeyZone",
         subtitle: String = "Touch the fingerprint sensor to unlock",
         onSuccess: () -> Unit,
         onError: (String) -> Unit
@@ -116,7 +116,9 @@ class BiometricAuthManager(private val context: Context) {
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                 super.onAuthenticationError(errorCode, errString)
-                if (errorCode != BiometricPrompt.ERROR_USER_CANCELED && errorCode != BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON || errorCode == BiometricPrompt.ERROR_USER_CANCELED) {
+                    onError("") // Send empty error to clear processing state without showing a message
+                } else {
                     onError(errString.toString())
                 }
             }

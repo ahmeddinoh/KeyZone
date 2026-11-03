@@ -79,12 +79,17 @@ class TotpManager(private val context: Context, private val cryptoManager: Crypt
     fun decryptSecretFromBackup(encrypted: ByteArray, masterKey: ByteArray): ByteArray =
         cryptoManager.decryptBytes(encrypted, masterKey)
 
+    /** Removes the locally stored TOTP secret. */
+    fun clearSecretLocally() {
+        prefs.edit().remove(KEY_SECRET).apply()
+    }
+
     // ═══════════════════════════════════════
     //  OTP Auth URI
     // ═══════════════════════════════════════
 
     /**
-     * Builds the standard `otpauth://totp/...` URI for scanning into Google Authenticator.
+     * Builds the standard `otpauth://totp/...` URI for scanning into an Authenticator App.
      *
      * Format: `otpauth://totp/{Issuer}:{Account}?secret={Base32}&issuer={Issuer}&algorithm=SHA1&digits=6&period=30`
      */
@@ -161,7 +166,7 @@ class TotpManager(private val context: Context, private val cryptoManager: Crypt
         private const val KEY_LAST_COUNTER = "last_counter"
         private const val MAX_FAILED_ATTEMPTS = 5
         private const val LOCKOUT_DURATION_MS = 30_000L
-        private const val ISSUER = "CipherVault"
+        private const val ISSUER = "KeyZone"
     }
 }
 

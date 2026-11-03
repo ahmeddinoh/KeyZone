@@ -3,6 +3,7 @@ package com.ciphervault.app.viewmodel
 import android.app.Application
 import android.content.Context
 import android.net.Uri
+import androidx.compose.runtime.mutableStateListOf
 import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -17,6 +18,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+data class SelectedFile(
+    val uri: Uri,
+    val name: String,
+    val size: Long,
+    val mimeType: String?
+)
 
 enum class SortOption(val label: String) {
     DATE_DESC("Newest first"),
@@ -74,17 +82,38 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     private val _decryptedUri = MutableStateFlow<Uri?>(null)
     val decryptedUri: StateFlow<Uri?> = _decryptedUri
 
+    private val _mediaPreviewUri = MutableStateFlow<Uri?>(null)
+    val mediaPreviewUri: StateFlow<Uri?> = _mediaPreviewUri
+
     private val _viewingNoteContent = MutableStateFlow<Pair<String, String>?>(null)
     val viewingNoteContent: StateFlow<Pair<String, String>?> = _viewingNoteContent
+    
+    val selectedFilesForEncryption = mutableStateListOf<SelectedFile>()
+
+    private val _viewingCredentialContent = MutableStateFlow<Pair<String, Map<String, String>>?>(null)
+    val viewingCredentialContent: StateFlow<Pair<String, Map<String, String>>?> = _viewingCredentialContent
+
+    private val _highlightedFileId = MutableStateFlow<Long?>(null)
+    val highlightedFileId: StateFlow<Long?> = _highlightedFileId
+
+    fun setHighlightedFile(id: Long?) {
+        _highlightedFileId.value = id
+    }
 
     fun setSortOption(option: SortOption) {
         _sortOption.value = option
     }
 
+    private val _encryptionProgress = MutableStateFlow(0f)
+    val encryptionProgress: StateFlow<Float> = _encryptionProgress
+
     suspend fun encryptFileSuspend(uri: Uri, fileName: String, mimeType: String?, deleteOriginal: Boolean = false) {
         _isLoading.value = true
-        repository.encryptFile(uri, fileName, mimeType, masterKey, deleteOriginal)
-            .onSuccess { _toastMessage.value = "\"${it.originalFileName}\" encrypted" }
+        _encryptionProgress.value = 0f
+        repository.encryptFile(uri, fileName, mimeType, masterKey, deleteOriginal) { progress ->
+            _encryptionProgress.value = progress
+        }
+            // Removing the Toast success message as requested by user
             .onFailure { _toastMessage.value = "Encryption failed: ${it.message}" }
         _isLoading.value = false
     }
@@ -104,6 +133,18 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                     _toastMessage.value = "\"${entity.originalFileName}\" decrypted"
                 }
                 .onFailure { _toastMessage.value = "Decryption failed: ${it.message}" }
+            _isLoading.value = false
+        }
+    }
+
+    fun prepareMediaPreview(entity: EncryptedFileEntity) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.decryptFile(entity, masterKey)
+                .onSuccess { uri ->
+                    _mediaPreviewUri.value = uri
+                }
+                .onFailure { _toastMessage.value = "Failed to load media: ${it.message}" }
             _isLoading.value = false
         }
     }
@@ -150,12 +191,32 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val tempFile = File(context.cacheDir, "$title.note.txt")
                 tempFile.writeText(content)
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", tempFile)
+                val uri = Uri.fromFile(tempFile)
                 repository.encryptFile(uri, "$title.note.txt", "text/plain", masterKey, deleteOriginal = false)
                 tempFile.delete()
                 _toastMessage.value = "Secure note saved"
             } catch (e: Exception) {
                 _toastMessage.value = "Failed to save note: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    fun createCredential(context: Context, title: String, username: String, pass: String) {
+        if (title.isBlank() || pass.isBlank()) return
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val tempFile = File(context.cacheDir, "$title.cred.txt")
+                val content = "Username:$username\nPassword:$pass"
+                tempFile.writeText(content)
+                val uri = Uri.fromFile(tempFile)
+                repository.encryptFile(uri, "$title.cred.txt", "text/plain", masterKey, deleteOriginal = false)
+                tempFile.delete()
+                _toastMessage.value = "Credentials saved"
+            } catch (e: Exception) {
+                _toastMessage.value = "Failed to save credentials: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
@@ -171,12 +232,20 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                         val inputStream = context.contentResolver.openInputStream(uri)
                         val text = inputStream?.bufferedReader().use { it?.readText() }
                         if (text != null) {
-                            _viewingNoteContent.value = Pair(entity.originalFileName, text)
+                            if (entity.originalFileName.endsWith(".cred.txt")) {
+                                val lines = text.split("\n")
+                                val username = lines.find { it.startsWith("Username:") }?.substringAfter("Username:") ?: ""
+                                val password = lines.find { it.startsWith("Password:") }?.substringAfter("Password:") ?: ""
+                                val map = mapOf("username" to username, "password" to password)
+                                _viewingCredentialContent.value = Pair(entity.originalFileName.removeSuffix(".cred.txt"), map)
+                            } else {
+                                _viewingNoteContent.value = Pair(entity.originalFileName.removeSuffix(".note.txt"), text)
+                            }
                         } else {
-                            _toastMessage.value = "Note is empty"
+                            _toastMessage.value = "Content is empty"
                         }
                     } catch (e: Exception) {
-                        _toastMessage.value = "Failed to read note"
+                        _toastMessage.value = "Failed to read content"
                     }
                 }
                 .onFailure { _toastMessage.value = "Decryption failed: ${it.message}" }
@@ -185,6 +254,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearViewingNote() { _viewingNoteContent.value = null }
+    fun clearViewingCredential() { _viewingCredentialContent.value = null }
 
     fun deleteFile(entity: EncryptedFileEntity) {
         viewModelScope.launch {
@@ -202,6 +272,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearToast() { _toastMessage.value = null }
     fun clearDecryptedUri() { _decryptedUri.value = null }
+    fun clearMediaPreviewUri() { _mediaPreviewUri.value = null }
 
     fun deleteDecryptedCacheFile(uri: Uri, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {

@@ -11,19 +11,25 @@ import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-/**
- * A custom ExoPlayer DataSource that decrypts AES-256-GCM encrypted media files on the fly.
- * Allows instant playback without decrypting the entire file to memory or disk.
- */
 @androidx.media3.common.util.UnstableApi
 class CipherVaultDataSource(
     private val encryptedFile: File,
     private val masterKey: ByteArray
 ) : BaseDataSource(true) {
 
-    private var inputStream: InputStream? = null
+    private var inputStream: FileInputStream? = null
+    private var opened = false
+    
+    // For V1 format
     private var cipher: Cipher? = null
     private var cipherFinished = false
+    
+    // For V3 format
+    private var isV3 = false
+    private var baseIv = ByteArray(0)
+    private var chunkIndex = 0
+    private val chunkOffsets = mutableListOf<Long>()
+    private val chunkFileOffsets = mutableListOf<Long>()
 
     private var bytesToRead: Long = C.LENGTH_UNSET.toLong()
     private var bytesReadTotal: Long = 0
@@ -44,76 +50,159 @@ class CipherVaultDataSource(
             val stream = FileInputStream(encryptedFile)
             inputStream = stream
 
-            // Read header (1 byte for format flag, then IV size, then IV)
             val firstByte = stream.read()
             if (firstByte < 0) throw java.io.IOException("Invalid stream")
 
-            val isCompressed: Boolean
-            val ivSize: Int
-            if (firstByte.toByte() == CryptoManager.FLAG_COMPRESSED_V2) {
-                isCompressed = true
-                ivSize = stream.read()
+            if (firstByte.toByte() == CryptoManager.FLAG_CHUNKED_V3) {
+                isV3 = true
+                val ivSize = stream.read()
                 if (ivSize < 0) throw java.io.IOException("Invalid stream header")
+                baseIv = readFully(stream, ivSize)
+                
+                val dataStartOffset = stream.channel.position()
+                var currentFileOffset = dataStartOffset
+                var calculatedActualDataSize = 0L
+                
+                chunkOffsets.clear()
+                chunkFileOffsets.clear()
+                
+                val lenBytes = ByteArray(4)
+                while (currentFileOffset < fileLength) {
+                    stream.channel.position(currentFileOffset)
+                    
+                    var readOffset = 0
+                    while (readOffset < 4) {
+                        val read = stream.read(lenBytes, readOffset, 4 - readOffset)
+                        if (read == -1) break
+                        readOffset += read
+                    }
+                    if (readOffset < 4) break
+                    
+                    val chunkLen = java.nio.ByteBuffer.wrap(lenBytes).int
+                    if (chunkLen < 0 || chunkLen > 1024 * 1024 + 64) throw java.io.IOException("Invalid chunk size during indexing")
+                    
+                    chunkOffsets.add(calculatedActualDataSize)
+                    chunkFileOffsets.add(currentFileOffset)
+                    
+                    val chunkPlaintextLen = chunkLen - (CryptoManager.GCM_TAG_LENGTH / 8)
+                    if (chunkPlaintextLen < 0) throw java.io.IOException("Invalid encrypted chunk length")
+                    
+                    calculatedActualDataSize += chunkPlaintextLen
+                    currentFileOffset += 4 + chunkLen
+                }
+                
+                val actualDataSize = calculatedActualDataSize
+                
+                currentPosition = 0
+                if (dataSpec.position > 0) {
+                    if (dataSpec.position > actualDataSize) {
+                        throw java.io.EOFException("Seek position ${dataSpec.position} exceeds data size $actualDataSize")
+                    }
+                    
+                    var targetChunk = chunkOffsets.binarySearch(dataSpec.position)
+                    if (targetChunk < 0) {
+                        targetChunk = -targetChunk - 2
+                    }
+                    
+                    val offsetInChunk = (dataSpec.position - chunkOffsets[targetChunk]).toInt()
+                    val fileOffset = chunkFileOffsets[targetChunk]
+                    stream.channel.position(fileOffset)
+                    
+                    chunkIndex = targetChunk
+                    currentPosition = dataSpec.position
+                    
+                    if (offsetInChunk > 0) {
+                        val dummyBuffer = ByteArray(0)
+                        readV3(dummyBuffer, 0, 0, isSkipping = true) 
+                        
+                        if (pendingBuffer.size > offsetInChunk) {
+                            pendingBuffer = pendingBuffer.copyOfRange(offsetInChunk, pendingBuffer.size)
+                            pendingOffset = 0
+                        } else {
+                            pendingBuffer = ByteArray(0)
+                            pendingOffset = 0
+                        }
+                    }
+                } else {
+                    stream.channel.position(dataStartOffset)
+                }
+                
+                bytesToRead = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
+                    dataSpec.length
+                } else {
+                    actualDataSize - dataSpec.position
+                }
             } else {
-                isCompressed = false
-                ivSize = firstByte
+                isV3 = false
+                val isCompressed: Boolean
+                val ivSize: Int
+                if (firstByte.toByte() == CryptoManager.FLAG_COMPRESSED_V2) {
+                    isCompressed = true
+                    ivSize = stream.read()
+                } else {
+                    isCompressed = false
+                    ivSize = firstByte
+                }
+
+                if (isCompressed) {
+                    throw java.io.IOException("Compressed media streaming is not supported")
+                }
+
+                val iv = readFully(stream, ivSize)
+                val headerSize = 1 + ivSize
+                val encryptedPayloadSize = fileLength - headerSize
+                val tagSize = CryptoManager.GCM_TAG_LENGTH / 8 // 16 bytes
+                val actualDataSize = encryptedPayloadSize - tagSize
+
+                if (actualDataSize < 0) throw java.io.IOException("Invalid encrypted file size")
+
+                cipher = Cipher.getInstance(CryptoManager.TRANSFORMATION).apply {
+                    init(
+                        Cipher.DECRYPT_MODE,
+                        SecretKeySpec(masterKey, "AES"),
+                        GCMParameterSpec(CryptoManager.GCM_TAG_LENGTH, iv)
+                    )
+                }
+                cipherFinished = false
+                
+                currentPosition = 0
+                if (dataSpec.position > 0) {
+                    if (dataSpec.position > actualDataSize) {
+                        throw java.io.EOFException("Seek position ${dataSpec.position} exceeds data size $actualDataSize")
+                    }
+                    skipPlaintext(dataSpec.position)
+                    currentPosition = dataSpec.position
+                }
+
+                bytesToRead = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
+                    dataSpec.length
+                } else {
+                    actualDataSize - dataSpec.position
+                }
             }
 
-            if (isCompressed) {
-                throw java.io.IOException("Compressed media streaming is not supported")
-            }
-
-            val iv = ByteArray(ivSize)
-            var offset = 0
-            while (offset < ivSize) {
-                val read = stream.read(iv, offset, ivSize - offset)
-                if (read < 0) throw java.io.EOFException("Premature EOF reading IV")
-                offset += read
-            }
-
-            val headerSize = 1 + ivSize
-            val encryptedPayloadSize = fileLength - headerSize
-            val tagSize = CryptoManager.GCM_TAG_LENGTH / 8 // 16 bytes
-            val actualDataSize = encryptedPayloadSize - tagSize
-
-            if (actualDataSize < 0) {
-                throw java.io.IOException("Invalid encrypted file size")
-            }
-
-            cipher = Cipher.getInstance(CryptoManager.TRANSFORMATION).apply {
-                init(
-                    Cipher.DECRYPT_MODE,
-                    SecretKeySpec(masterKey, "AES"),
-                    GCMParameterSpec(CryptoManager.GCM_TAG_LENGTH, iv)
-                )
-            }
-            cipherFinished = false
             pendingBuffer = ByteArray(0)
             pendingOffset = 0
-
-            // Handle seeking (skipping bytes in the cipher stream)
-            currentPosition = 0
-            if (dataSpec.position > 0) {
-                if (dataSpec.position > actualDataSize) {
-                    throw java.io.EOFException("Seek position ${dataSpec.position} exceeds data size $actualDataSize")
-                }
-                skipPlaintext(dataSpec.position)
-                currentPosition = dataSpec.position
-            }
-
-            bytesToRead = if (dataSpec.length != C.LENGTH_UNSET.toLong()) {
-                dataSpec.length
-            } else {
-                actualDataSize - dataSpec.position
-            }
 
         } catch (e: Exception) {
             closeSilently()
             throw (e as? java.io.IOException) ?: java.io.IOException("Failed to initialize cipher data source", e)
         }
 
+        opened = true
         transferStarted(dataSpec)
         return bytesToRead
+    }
+    
+    private fun readFully(stream: InputStream, size: Int): ByteArray {
+        val bytes = ByteArray(size)
+        var readOffset = 0
+        while (readOffset < size) {
+            val read = stream.read(bytes, readOffset, size - readOffset)
+            if (read < 0) throw java.io.EOFException("Premature EOF")
+            readOffset += read
+        }
+        return bytes
     }
 
     private fun skipPlaintext(bytesToSkip: Long) {
@@ -141,11 +230,10 @@ class CipherVaultDataSource(
     ): Int {
         if (length == 0) return 0
         if ((!isSkipping) && bytesToRead == 0L) {
-            finishCipherAndVerifyTag()
+            if (!isV3) finishCipherAndVerifyTag()
             return C.RESULT_END_OF_INPUT
         }
 
-        // 1. First, drain any pending decrypted bytes from previous cipher operations
         val pendingAvailable = pendingBuffer.size - pendingOffset
         if (pendingAvailable > 0) {
             val toCopy = minOf(length, pendingAvailable)
@@ -166,7 +254,74 @@ class CipherVaultDataSource(
             return toCopy
         }
 
-        // 2. Loop reading from underlying input stream until decrypted bytes are produced or EOF
+        return if (isV3) {
+            readV3(buffer, offset, length, isSkipping)
+        } else {
+            readV1(buffer, offset, length, isSkipping)
+        }
+    }
+
+    private fun readV3(buffer: ByteArray, offset: Int, length: Int, isSkipping: Boolean): Int {
+        val stream = inputStream ?: return C.RESULT_END_OF_INPUT
+        
+        val lenBytes = ByteArray(4)
+        var readOffset = 0
+        while (readOffset < 4) {
+            val read = stream.read(lenBytes, readOffset, 4 - readOffset)
+            if (read == -1) break
+            readOffset += read
+        }
+        if (readOffset == 0) return C.RESULT_END_OF_INPUT
+        if (readOffset < 4) throw java.io.IOException("Corrupt chunk size")
+        
+        val chunkLen = java.nio.ByteBuffer.wrap(lenBytes).int
+        if (chunkLen < 0 || chunkLen > 1024 * 1024 + 64) throw java.io.IOException("Invalid chunk size")
+        
+        val encryptedChunk = readFully(stream, chunkLen)
+        
+        val chunkIv = baseIv.copyOf()
+        val indexBytes = java.nio.ByteBuffer.allocate(4).putInt(chunkIndex).array()
+        for (i in 0..3) {
+            chunkIv[8 + i] = (chunkIv[8 + i].toInt() xor indexBytes[i].toInt()).toByte()
+        }
+        
+        val chunkCipher = Cipher.getInstance(CryptoManager.TRANSFORMATION).apply {
+            init(
+                Cipher.DECRYPT_MODE,
+                SecretKeySpec(masterKey, "AES"),
+                GCMParameterSpec(CryptoManager.GCM_TAG_LENGTH, chunkIv)
+            )
+        }
+        
+        val decrypted = try {
+            chunkCipher.doFinal(encryptedChunk)
+        } catch (e: Exception) {
+            throw java.io.IOException("Error decrypting chunk $chunkIndex", e)
+        }
+        chunkIndex++
+        
+        if (decrypted.isNotEmpty()) {
+            val toCopy = minOf(length, decrypted.size)
+            System.arraycopy(decrypted, 0, buffer, offset, toCopy)
+            if (decrypted.size > toCopy) {
+                pendingBuffer = decrypted
+                pendingOffset = toCopy
+            }
+            if (!isSkipping) {
+                if (bytesToRead != C.LENGTH_UNSET.toLong()) {
+                    bytesToRead -= toCopy
+                }
+                bytesReadTotal += toCopy
+                currentPosition += toCopy
+                bytesTransferred(toCopy)
+            }
+            return toCopy
+        }
+        
+        return C.RESULT_END_OF_INPUT
+    }
+
+    private fun readV1(buffer: ByteArray, offset: Int, length: Int, isSkipping: Boolean): Int {
         val tempEncrypted = ByteArray(8192)
         val tagSizeBytes = CryptoManager.GCM_TAG_LENGTH / 8
         while (true) {
@@ -224,7 +379,6 @@ class CipherVaultDataSource(
                     }
                     return toCopy
                 }
-                // If cipher.update returned null/empty (buffering tag), loop continues to read next chunk
             }
         }
     }
@@ -244,8 +398,11 @@ class CipherVaultDataSource(
     override fun getUri(): Uri? = Uri.fromFile(encryptedFile)
 
     override fun close() {
+        if (opened) {
+            opened = false
+            transferEnded()
+        }
         closeSilently()
-        transferEnded()
     }
 
     private fun closeSilently() {
@@ -256,6 +413,9 @@ class CipherVaultDataSource(
             inputStream = null
             cipher = null
             cipherFinished = false
+            isV3 = false
+            baseIv = ByteArray(0)
+            chunkIndex = 0
             pendingBuffer = ByteArray(0)
             pendingOffset = 0
         }

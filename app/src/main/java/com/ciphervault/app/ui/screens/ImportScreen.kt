@@ -1,49 +1,61 @@
 package com.ciphervault.app.ui.screens
 
+import com.ciphervault.app.CipherVaultApp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Dialpad
-import androidx.compose.material.icons.filled.Password
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.CloudDownload
+import androidx.compose.material.icons.outlined.Dialpad
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Password
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,27 +65,28 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ciphervault.app.ui.theme.CardBorder
-import com.ciphervault.app.ui.theme.CardBorderSubtle
-import com.ciphervault.app.ui.theme.CyanAccent
-import com.ciphervault.app.ui.theme.CyanSubtle
-import com.ciphervault.app.ui.theme.DarkBackground
-import com.ciphervault.app.ui.theme.DarkCard
-import com.ciphervault.app.ui.theme.DarkCardElevated
-import com.ciphervault.app.ui.theme.DarkSurfaceVariant
-import com.ciphervault.app.ui.theme.ErrorRed
-import com.ciphervault.app.ui.theme.TextPrimary
-import com.ciphervault.app.ui.theme.TextSecondary
-import com.ciphervault.app.ui.theme.VaultGreen
-import com.ciphervault.app.ui.theme.VaultGreenSubtle
+import com.ciphervault.app.ui.theme.VaultColors
+import com.ciphervault.app.ui.theme.VaultType
 import com.ciphervault.app.viewmodel.ImportViewModel
 
 /**
@@ -88,6 +101,7 @@ fun ImportScreen(
     onBack: () -> Unit,
     onImportSuccess: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val step by importViewModel.step.collectAsState()
     val backupInfo by importViewModel.backupInfo.collectAsState()
     val isLoading by importViewModel.isLoading.collectAsState()
@@ -104,464 +118,354 @@ fun ImportScreen(
         uri?.let { importViewModel.onFileSelected(it) }
     }
 
+    val stepIndex = when (step) {
+        ImportViewModel.ImportStep.SELECT_FILE -> 0
+        ImportViewModel.ImportStep.ENTER_KEY -> 1
+        ImportViewModel.ImportStep.ENTER_TOTP -> 2
+        ImportViewModel.ImportStep.SUCCESS -> 3
+    }
+    // Once we know the backup has no 2FA, there is no third step to show.
+    val stepLabels = if (backupInfo?.hasTotp != false) listOf("File", "Key", "2FA") else listOf("File", "Key")
+    val isSuccess = step == ImportViewModel.ImportStep.SUCCESS
+
+    val canSubmitKey = keyInput.length >= 4 && !isLoading
+    val canSubmitTotp = (if (useRecoveryCode) totpInput.length >= 8 else totpInput.length == 6) && !isLoading
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground)
+            .background(VaultColors.Ground)
+            .systemBarsPadding()
+            .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(horizontal = 24.dp, vertical = 20.dp)
     ) {
-        // Top row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, CardBorder, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                IconButton(onClick = {
-                    if (step == ImportViewModel.ImportStep.SELECT_FILE) onBack()
-                    else importViewModel.reset()
-                }) {
+        // ---- Back ----
+        Box(modifier = Modifier.height(44.dp)) {
+            if (!isSuccess) {
+                IconButton(
+                    onClick = {
+                        if (step == ImportViewModel.ImportStep.SELECT_FILE) onBack()
+                        else importViewModel.reset()
+                    },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(VaultColors.SurfaceRaised)
+                        .border(1.dp, VaultColors.Hairline, CircleShape)
+                ) {
                     Icon(
-                        imageVector = Icons.Filled.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                         contentDescription = "Back",
-                        tint = TextPrimary,
+                        tint = VaultColors.TextPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column {
-                Text(
-                    text = "Import Vault",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Restore .cvault backup archive",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary
-                )
-            }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        if (!isSuccess) {
+            Spacer(modifier = Modifier.height(20.dp))
 
-        // Step progress indicators
-        Row(
+            // ---- Header ----
+            Text(
+                text = "Import",
+                style = VaultType.PageTitle,
+                color = VaultColors.TextPrimary
+            )
+            Text(
+                text = "your vault.",
+                style = VaultType.PageTitle.copy(fontStyle = FontStyle.Italic),
+                color = VaultColors.Accent
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Restore a .cvault backup archive.",
+                style = VaultType.Meta,
+                color = VaultColors.TextSecondary
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            StepIndicator(labels = stepLabels, current = stepIndex)
+
+            Spacer(modifier = Modifier.height(28.dp))
+        }
+
+        // ---- Step content ----
+        AnimatedContent(
+            targetState = step,
+            transitionSpec = { fadeIn(tween(240, delayMillis = 60)) togetherWith fadeOut(tween(120)) },
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            StepChip(number = 1, label = "File", isActive = step == ImportViewModel.ImportStep.SELECT_FILE)
-            Spacer(modifier = Modifier.width(8.dp))
-            StepChip(number = 2, label = "Key", isActive = step == ImportViewModel.ImportStep.ENTER_KEY)
-            Spacer(modifier = Modifier.width(8.dp))
-            StepChip(number = 3, label = "2FA", isActive = step == ImportViewModel.ImportStep.ENTER_TOTP)
-        }
+            label = "importStep"
+        ) { currentStep ->
+            when (currentStep) {
+                ImportViewModel.ImportStep.SELECT_FILE -> {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        StepHeader(
+                            title = "Select your backup",
+                            description = "Choose a KeyZone backup (.cvault) from your device storage or downloads."
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        BackupDropZone(onClick = {
+                            (context.applicationContext as? CipherVaultApp)?.ignoreNextBackgroundLock = true
+                            filePicker.launch(arrayOf("*/*"))
+                        })
+                        ErrorPanel(message = errorMessage)
+                    }
+                }
 
-        Spacer(modifier = Modifier.height(28.dp))
+                ImportViewModel.ImportStep.ENTER_KEY -> {
+                    val isPin = backupInfo?.keyType == "pin"
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        StepHeader(
+                            title = if (isPin) "Enter your vault PIN" else "Enter your vault password",
+                            description = "This backup is protected by a ${if (isPin) "numeric PIN" else "password"}. Enter the key you used when you created the vault."
+                        )
 
-        // Dynamic content based on step
-        when (step) {
-            ImportViewModel.ImportStep.SELECT_FILE -> {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(76.dp)
-                            .clip(CircleShape)
-                            .background(CyanSubtle)
-                            .border(1.dp, CyanAccent.copy(alpha = 0.3f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.CloudDownload,
-                            contentDescription = null,
-                            tint = CyanAccent,
-                            modifier = Modifier.size(38.dp)
+                        backupInfo?.let { info ->
+                            Spacer(modifier = Modifier.height(20.dp))
+                            BackupSummary(
+                                fileCount = info.fileCount.toInt(),
+                                hasTotp = info.hasTotp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        OutlinedTextField(
+                            value = keyInput,
+                            onValueChange = {
+                                keyInput = if (isPin) it.filter { c -> c.isDigit() } else it
+                                importViewModel.clearError()
+                            },
+                            label = { Text(if (isPin) "Vault PIN" else "Vault password") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = if (isPin) Icons.Outlined.Dialpad else Icons.Outlined.Password,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
+                            singleLine = true,
+                            visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = if (isPin) KeyboardType.NumberPassword else KeyboardType.Password,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = { if (canSubmitKey) importViewModel.submitKey(keyInput) }
+                            ),
+                            trailingIcon = {
+                                IconButton(onClick = { showKey = !showKey }) {
+                                    Icon(
+                                        imageVector = if (showKey) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                        contentDescription = if (showKey) "Hide key" else "Show key",
+                                        tint = VaultColors.TextSecondary
+                                    )
+                                }
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = importFieldColors(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        ErrorPanel(message = errorMessage)
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        PrimaryAction(
+                            label = "Verify key and continue",
+                            enabled = canSubmitKey,
+                            loading = isLoading,
+                            onClick = { importViewModel.submitKey(keyInput) }
                         )
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                ImportViewModel.ImportStep.ENTER_TOTP -> {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        StepHeader(
+                            title = if (useRecoveryCode) "Enter a recovery code" else "Two-factor verification",
+                            description = if (useRecoveryCode) {
+                                "Enter one of your 8 emergency recovery codes (for example XXXXX-XXXXX)."
+                            } else {
+                                "Open your Authenticator app and enter the 6-digit code for KeyZone."
+                            }
+                        )
 
-                    Text(
-                        text = "Select Backup File",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = totpInput,
+                            onValueChange = {
+                                val filtered = if (!useRecoveryCode) it.filter { c -> c.isDigit() }.take(6) else it.take(15)
+                                totpInput = filtered
+                                importViewModel.clearError()
+                            },
+                            label = { Text(if (useRecoveryCode) "Recovery code" else "6-digit code") },
+                            singleLine = true,
+                            textStyle = LocalTextStyle.current.copy(
+                                fontSize = if (useRecoveryCode) 16.sp else 24.sp,
+                                letterSpacing = if (useRecoveryCode) 1.sp else 8.sp,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = if (useRecoveryCode) KeyboardType.Ascii else KeyboardType.Number,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    if (canSubmitTotp) importViewModel.submitTotp(totpInput) { onImportSuccess() }
+                                }
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = importFieldColors(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
 
-                    Text(
-                        text = "Choose a CipherVault backup (.cvault) from your device storage or downloads.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center
-                    )
+                        TextButton(
+                            onClick = {
+                                useRecoveryCode = !useRecoveryCode
+                                totpInput = ""
+                                importViewModel.clearError()
+                            },
+                            contentPadding = PaddingValues(horizontal = 4.dp)
+                        ) {
+                            Text(
+                                text = if (useRecoveryCode) "Switch back to the 6-digit authenticator code"
+                                else "Lost your phone? Use an emergency recovery code",
+                                color = VaultColors.Accent,
+                                style = VaultType.Meta
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                        ErrorPanel(message = errorMessage)
 
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.5.dp, CardBorder, RoundedCornerShape(20.dp)),
-                        colors = CardDefaults.cardColors(containerColor = DarkCard),
-                        shape = RoundedCornerShape(20.dp),
-                        onClick = { filePicker.launch(arrayOf("*/*")) }
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        PrimaryAction(
+                            label = "Validate and open vault",
+                            enabled = canSubmitTotp,
+                            loading = isLoading,
+                            onClick = { importViewModel.submitTotp(totpInput) { onImportSuccess() } }
+                        )
+                    }
+                }
+
+                ImportViewModel.ImportStep.SUCCESS -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        SuccessEmblem()
+
+                        Spacer(modifier = Modifier.height(28.dp))
+
+                        Text(
+                            text = "Vault restored",
+                            style = VaultType.PageTitle,
+                            color = VaultColors.TextPrimary,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Text(
+                            text = "Your encrypted files and keys have been restored to this device.",
+                            style = VaultType.Meta,
+                            color = VaultColors.TextSecondary,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 22.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        val noteShape = RoundedCornerShape(16.dp)
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .clip(noteShape)
+                                .background(VaultColors.SurfaceRaised)
+                                .border(1.dp, VaultColors.Hairline, noteShape)
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.Top
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.CloudDownload,
+                                imageVector = Icons.Outlined.Info,
                                 contentDescription = null,
-                                tint = CyanAccent,
-                                modifier = Modifier.size(48.dp)
+                                tint = VaultColors.Accent,
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Browse Files",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = CyanAccent,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Tap to choose .cvault archive",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary
+                                text = "From now on you only need your PIN or password to unlock. The authenticator 2FA code isn't needed for daily use.",
+                                style = VaultType.Meta,
+                                color = VaultColors.TextSecondary,
+                                lineHeight = 20.sp
                             )
                         }
-                    }
-                }
-            }
 
-            ImportViewModel.ImportStep.ENTER_KEY -> {
-                val isPin = backupInfo?.keyType == "pin"
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                            .background(VaultGreenSubtle)
-                            .border(1.dp, VaultGreen.copy(alpha = 0.3f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (isPin) Icons.Filled.Dialpad else Icons.Filled.Password,
-                            contentDescription = null,
-                            tint = VaultGreen,
-                            modifier = Modifier.size(36.dp)
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        PrimaryAction(
+                            label = "Open vault",
+                            enabled = true,
+                            loading = false,
+                            onClick = onImportSuccess
                         )
-                    }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    Text(
-                        text = if (isPin) "Enter Vault PIN" else "Enter Vault Password",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        text = "This backup is protected by a ${if (isPin) "numeric PIN" else "password"}. Enter the key that was used when creating this vault.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center
-                    )
-
-                    backupInfo?.let { info ->
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .border(1.dp, CardBorderSubtle, RoundedCornerShape(14.dp)),
-                            colors = CardDefaults.cardColors(containerColor = DarkCardElevated),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Text(
-                                    text = "Backup Archive Verified:",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = VaultGreen,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "• ${info.fileCount} encrypted file(s) included\n• Two-Factor Authentication: ${if (info.hasTotp) "Enabled (Required)" else "None"}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    OutlinedTextField(
-                        value = keyInput,
-                        onValueChange = {
-                            keyInput = if (isPin) it.filter { c -> c.isDigit() } else it
-                            importViewModel.clearError()
-                        },
-                        label = { Text(if (isPin) "Vault PIN" else "Vault Password") },
-                        singleLine = true,
-                        visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = if (isPin) KeyboardType.NumberPassword else KeyboardType.Password
-                        ),
-                        trailingIcon = {
-                            IconButton(onClick = { showKey = !showKey }) {
-                                Icon(
-                                    imageVector = if (showKey) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
-                                    contentDescription = "Toggle visibility",
-                                    tint = TextSecondary
-                                )
-                            }
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = VaultGreen,
-                            unfocusedBorderColor = CardBorder,
-                            cursorColor = VaultGreen,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedContainerColor = DarkCard,
-                            unfocusedContainerColor = DarkCard
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Button(
-                        onClick = { importViewModel.submitKey(keyInput) },
-                        enabled = keyInput.length >= 4 && !isLoading,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = VaultGreen,
-                            contentColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp)
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.Black, strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(10.dp))
-                        }
-                        Text("Verify Key & Continue", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    }
-                }
-            }
-
-            ImportViewModel.ImportStep.ENTER_TOTP -> {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                            .background(CyanSubtle)
-                            .border(1.dp, CyanAccent.copy(alpha = 0.3f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Security,
-                            contentDescription = null,
-                            tint = CyanAccent,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    Text(
-                        text = if (useRecoveryCode) "Enter Recovery Code" else "Two-Factor Verification",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        text = if (useRecoveryCode) {
-                            "Enter one of your 8 emergency recovery codes (e.g. XXXXX-XXXXX)."
-                        } else {
-                            "Open Google Authenticator and enter the 6-digit code for CipherVault."
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(28.dp))
-
-                    OutlinedTextField(
-                        value = totpInput,
-                        onValueChange = {
-                            val filtered = if (!useRecoveryCode) it.filter { c -> c.isDigit() }.take(6) else it.take(15)
-                            totpInput = filtered
-                            importViewModel.clearError()
-                        },
-                        label = { Text(if (useRecoveryCode) "Recovery Code" else "6-Digit Code") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = if (useRecoveryCode) KeyboardType.Ascii else KeyboardType.Number
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = CyanAccent,
-                            unfocusedBorderColor = CardBorder,
-                            cursorColor = CyanAccent,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            focusedContainerColor = DarkCard,
-                            unfocusedContainerColor = DarkCard
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    TextButton(onClick = {
-                        useRecoveryCode = !useRecoveryCode
-                        totpInput = ""
-                        importViewModel.clearError()
-                    }) {
-                        Text(
-                            text = if (useRecoveryCode) "Switch back to 6-digit Authenticator code"
-                            else "Lost your phone? Use an emergency recovery code",
-                            color = CyanAccent,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Button(
-                        onClick = {
-                            importViewModel.submitTotp(totpInput) {
-                                onImportSuccess()
-                            }
-                        },
-                        enabled = (if (useRecoveryCode) totpInput.length >= 8 else totpInput.length == 6) && !isLoading,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = CyanAccent,
-                            contentColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp)
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(22.dp), color = Color.Black, strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(10.dp))
-                        }
-                        Text("Validate & Open Vault", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    }
-                }
-            }
-
-            ImportViewModel.ImportStep.SUCCESS -> {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .clip(CircleShape)
-                            .background(VaultGreenSubtle)
-                            .border(1.5.dp, VaultGreen.copy(alpha = 0.5f), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = null,
-                            tint = VaultGreen,
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Text(
-                        text = "Vault Restored Successfully",
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = "Your encrypted files and keys have been restored to this device.\n\nOn future runs, you will only need your PIN/password to unlock. The Authenticator 2FA code is not needed for daily use.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center,
-                        lineHeight = 22.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(36.dp))
-
-                    Button(
-                        onClick = onImportSuccess,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = VaultGreen,
-                            contentColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                    ) {
-                        Text("Open Vault Dashboard", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
             }
         }
+    }
+}
 
-        // Error message display
-        AnimatedVisibility(
-            visible = errorMessage != null,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = errorMessage ?: "",
-                    color = ErrorRed,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
+// =====================================================================
+//  Step pieces
+// =====================================================================
+
+@Composable
+private fun StepHeader(title: String, description: String) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = title,
+            style = VaultType.ItemTitle.copy(fontSize = 20.sp),
+            color = VaultColors.TextPrimary
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = description,
+            style = VaultType.Meta,
+            color = VaultColors.TextSecondary,
+            lineHeight = 20.sp
+        )
+    }
+}
+
+/** The steps really are a sequence, so they're numbered and joined by a line that fills as you go. */
+@Composable
+private fun StepIndicator(labels: List<String>, current: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        labels.forEachIndexed { index, label ->
+            StepNode(number = index + 1, label = label, done = index < current, active = index == current)
+            if (index < labels.lastIndex) {
+                val lineColor by animateColorAsState(
+                    targetValue = if (index < current) VaultColors.Accent else VaultColors.Hairline,
+                    label = "stepLine$index"
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 10.dp)
+                        .height(2.dp)
+                        .clip(CircleShape)
+                        .background(lineColor)
                 )
             }
         }
@@ -569,35 +473,337 @@ fun ImportScreen(
 }
 
 @Composable
-private fun StepChip(number: Int, label: String, isActive: Boolean) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+private fun StepNode(number: Int, label: String, done: Boolean, active: Boolean) {
+    val fill by animateColorAsState(
+        targetValue = when {
+            done -> VaultColors.Accent
+            active -> VaultColors.AccentTint
+            else -> VaultColors.Surface
+        },
+        label = "stepFill$number"
+    )
+    val borderColor = when {
+        done || active -> VaultColors.Accent
+        else -> VaultColors.Hairline
+    }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(fill)
+                .border(1.dp, borderColor, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (done) {
+                Icon(
+                    imageVector = Icons.Outlined.Check,
+                    contentDescription = "$label done",
+                    tint = Color.Black,
+                    modifier = Modifier.size(16.dp)
+                )
+            } else {
+                Text(
+                    text = number.toString(),
+                    style = VaultType.Meta,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (active) VaultColors.Accent else VaultColors.TextSecondary
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = label,
+            style = VaultType.Meta,
+            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+            color = if (active) VaultColors.TextPrimary else VaultColors.TextSecondary
+        )
+    }
+}
+
+@Composable
+private fun BackupDropZone(onClick: () -> Unit) {
+    val shape = RoundedCornerShape(24.dp)
+    Column(
         modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (isActive) VaultGreenSubtle else DarkCard)
-            .border(1.dp, if (isActive) VaultGreen.copy(alpha = 0.5f) else CardBorderSubtle, RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .fillMaxWidth()
+            .clip(shape)
+            .background(VaultColors.AccentTint.copy(alpha = 0.55f))
+            .dashedBorder(VaultColors.Accent.copy(alpha = 0.5f), cornerRadius = 24.dp)
+            .clickable(role = Role.Button, onClickLabel = "Choose a backup file", onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        IconBadge(
+            icon = Icons.Outlined.CloudDownload,
+            size = 72.dp,
+            iconSize = 32.dp,
+            background = VaultColors.Ground.copy(alpha = 0.55f)
+        )
+        Spacer(modifier = Modifier.height(18.dp))
+        Text(
+            text = "Tap to choose a .cvault archive",
+            style = VaultType.ItemTitle,
+            color = VaultColors.TextPrimary,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(20.dp))
+        Row(
+            modifier = Modifier
+                .clip(CircleShape)
+                .background(VaultColors.Accent)
+                .padding(horizontal = 22.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.FolderOpen,
+                contentDescription = null,
+                tint = Color.Black,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Browse files",
+                style = VaultType.ItemTitle.copy(fontSize = 14.sp),
+                color = Color.Black,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun BackupSummary(fileCount: Int, hasTotp: Boolean) {
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(VaultColors.SurfaceRaised)
+            .border(1.dp, VaultColors.Hairline, shape)
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Outlined.CheckCircle,
+                contentDescription = null,
+                tint = VaultColors.Accent,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Backup archive verified",
+                style = VaultType.Meta,
+                color = VaultColors.Accent,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = fileCount.toString(),
+                    style = VaultType.ItemTitle.copy(fontSize = 22.sp),
+                    color = VaultColors.TextPrimary
+                )
+                Text(
+                    text = if (fileCount == 1) "encrypted file" else "encrypted files",
+                    style = VaultType.Meta,
+                    color = VaultColors.TextSecondary
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(40.dp)
+                    .background(VaultColors.Hairline)
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 16.dp)
+            ) {
+                Text(
+                    text = if (hasTotp) "Required" else "Off",
+                    style = VaultType.ItemTitle.copy(fontSize = 22.sp),
+                    color = if (hasTotp) VaultColors.Accent else VaultColors.TextPrimary
+                )
+                Text(
+                    text = "Two-factor authentication",
+                    style = VaultType.Meta,
+                    color = VaultColors.TextSecondary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SuccessEmblem() {
+    Box(
+        modifier = Modifier.size(148.dp),
+        contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .size(20.dp)
+                .size(148.dp)
                 .clip(CircleShape)
-                .background(if (isActive) VaultGreen else TextSecondary.copy(alpha = 0.3f)),
+                .border(1.dp, VaultColors.Accent.copy(alpha = 0.15f), CircleShape)
+        )
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .clip(CircleShape)
+                .background(VaultColors.AccentTint)
+                .border(1.dp, VaultColors.Accent.copy(alpha = 0.45f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = number.toString(),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isActive) Color.Black else TextPrimary
+            Icon(
+                imageVector = Icons.Outlined.CheckCircle,
+                contentDescription = null,
+                tint = VaultColors.Accent,
+                modifier = Modifier.size(52.dp)
             )
         }
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-            color = if (isActive) VaultGreen else TextSecondary
+    }
+}
+
+// =====================================================================
+//  Shared pieces
+// =====================================================================
+
+@Composable
+private fun PrimaryAction(
+    label: String,
+    enabled: Boolean,
+    loading: Boolean,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = VaultColors.Accent,
+            contentColor = Color.Black,
+            disabledContainerColor = VaultColors.Accent.copy(alpha = 0.3f),
+            disabledContentColor = Color.Black.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(58.dp)
+    ) {
+        if (loading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                color = Color.Black,
+                strokeWidth = 2.dp
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+        }
+        Text(label, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+    }
+}
+
+@Composable
+private fun ErrorPanel(message: String?) {
+    AnimatedVisibility(
+        visible = message != null,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically()
+    ) {
+        val shape = RoundedCornerShape(14.dp)
+        Row(
+            modifier = Modifier
+                .padding(top = 14.dp)
+                .fillMaxWidth()
+                .clip(shape)
+                .background(VaultColors.ErrorRed.copy(alpha = 0.1f))
+                .border(1.dp, VaultColors.ErrorRed.copy(alpha = 0.35f), shape)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.ErrorOutline,
+                contentDescription = null,
+                tint = VaultColors.ErrorRed,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = message ?: "",
+                color = VaultColors.TextPrimary,
+                style = VaultType.Meta
+            )
+        }
+    }
+}
+
+@Composable
+private fun importFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = VaultColors.Accent,
+    unfocusedBorderColor = VaultColors.Hairline,
+    cursorColor = VaultColors.Accent,
+    focusedTextColor = VaultColors.TextPrimary,
+    unfocusedTextColor = VaultColors.TextPrimary,
+    focusedLabelColor = VaultColors.Accent,
+    unfocusedLabelColor = VaultColors.TextSecondary,
+    focusedLeadingIconColor = VaultColors.Accent,
+    unfocusedLeadingIconColor = VaultColors.TextSecondary,
+    focusedContainerColor = VaultColors.Surface,
+    unfocusedContainerColor = VaultColors.Surface
+)
+
+@Composable
+private fun IconBadge(
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    size: Dp = 44.dp,
+    iconSize: Dp = 22.dp,
+    shape: Shape = CircleShape,
+    tint: Color = VaultColors.Accent,
+    background: Color = VaultColors.AccentTint
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(shape)
+            .background(background)
+            .border(1.dp, tint.copy(alpha = 0.25f), shape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(iconSize)
         )
     }
+}
+
+private fun Modifier.dashedBorder(
+    color: Color,
+    cornerRadius: Dp,
+    strokeWidth: Dp = 1.5.dp,
+    dash: Dp = 10.dp,
+    gap: Dp = 8.dp
+): Modifier = drawBehind {
+    val stroke = strokeWidth.toPx()
+    drawRoundRect(
+        color = color,
+        topLeft = Offset(stroke / 2f, stroke / 2f),
+        size = Size(size.width - stroke, size.height - stroke),
+        cornerRadius = CornerRadius(cornerRadius.toPx()),
+        style = Stroke(
+            width = stroke,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash.toPx(), gap.toPx()))
+        )
+    )
 }

@@ -77,11 +77,7 @@ import com.ciphervault.app.ui.screens.SettingsScreen
 import com.ciphervault.app.ui.screens.SetupScreen
 import com.ciphervault.app.ui.screens.VaultScreen
 import com.ciphervault.app.ui.screens.WelcomeScreen
-import com.ciphervault.app.ui.theme.DarkBackground
-import com.ciphervault.app.ui.theme.DarkSurfaceVariant
-import com.ciphervault.app.ui.theme.TextSecondary
-import com.ciphervault.app.ui.theme.VaultGreen
-import com.ciphervault.app.ui.theme.VaultGreenDark
+import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.viewmodel.AuthViewModel
 import com.ciphervault.app.viewmodel.BackupViewModel
 import com.ciphervault.app.viewmodel.ImportViewModel
@@ -193,16 +189,53 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
         }
     }
 
-    val showBottomBar = currentRoute in listOf("home", "vault", "encrypt", "settings")
+    val hasSelectedFiles = vaultViewModel.selectedFilesForEncryption.isNotEmpty()
+    val showBottomBar = currentRoute in listOf("home", "vault", "encrypt", "settings") && !(currentRoute == "encrypt" && hasSelectedFiles)
 
     val isBottomBarVisible = remember { mutableStateOf(true) }
+    
+    // Reset visibility when navigating to a new screen or when selected files change
+    // This ensures if the list shrinks (e.g., after encrypting) and can no longer scroll,
+    // the nav bar isn't stuck hidden.
+    LaunchedEffect(currentRoute, hasSelectedFiles) {
+        isBottomBarVisible.value = true
+    }
+    
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
+            var scrollDistance = 0f
+            
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -15f) {
+                val delta = available.y
+                
+                if (scrollDistance * delta < 0) {
+                    scrollDistance = 0f
+                }
+                
+                scrollDistance += delta
+                
+                // Give it some "head room" before hiding (e.g. scroll down at least 40px)
+                if (scrollDistance < -40f) {
                     isBottomBarVisible.value = false
-                } else if (available.y > 15f) {
+                    scrollDistance = -40f
+                } 
+                // Show it very quickly when scrolling up (only 10px needed)
+                else if (scrollDistance > 10f) {
                     isBottomBarVisible.value = true
+                    scrollDistance = 10f
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                // If scroll hits the top boundary (unconsumed pull-down), ensure nav bar is visible
+                if (available.y > 0f) {
+                    isBottomBarVisible.value = true
+                    scrollDistance = 0f
                 }
                 return Offset.Zero
             }
@@ -233,7 +266,7 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
     Scaffold(
         modifier = Modifier.nestedScroll(nestedScrollConnection),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = com.ciphervault.app.ui.theme.VaultColors.Ground,
+        containerColor = VaultColors.Ground,
     ) { paddingValues ->
         Box(Modifier.fillMaxSize()) {
             NavHost(
@@ -267,7 +300,14 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
                         authViewModel = authViewModel,
                         vaultViewModel = vaultViewModel,
                         onNavigateToBackup = { navController.navigate("backup") },
-                        onNavigateToChangeKey = { navController.navigate("change_key") }
+                        onNavigateToChangeKey = { navController.navigate("change_key") },
+                        onNavigateToStorageInsights = { navController.navigate("storage_insights") }
+                    )
+                }
+                composable("storage_insights") {
+                    com.ciphervault.app.ui.screens.StorageInsightsScreen(
+                        vaultViewModel = vaultViewModel,
+                        onBack = { navController.popBackStack() }
                     )
                 }
                 composable("change_key") {

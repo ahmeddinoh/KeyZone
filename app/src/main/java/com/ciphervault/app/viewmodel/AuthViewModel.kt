@@ -97,31 +97,40 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun unlockWithBiometric(activity: FragmentActivity) {
         if (!isBiometricEnabled || _lockoutSecondsRemaining.value > 0) return
         _isProcessing.value = true
-        app.biometricAuthManager.promptBiometric(
-            activity = activity,
-            title = "Unlock CipherVault",
-            subtitle = "Touch sensor to unlock with biometric key",
-            onSuccess = {
-                try {
-                    val masterKey = app.biometricAuthManager.unwrapMasterKey(
-                        vaultConfig.biometricWrappedMasterKey,
-                        vaultConfig.biometricIv
-                    )
-                    app.sessionMasterKey = masterKey
-                    failedAttempts = 0
-                    _errorMessage.value = null
-                    _isProcessing.value = false
-                    _appState.value = AppState.AUTHENTICATED
-                } catch (_: Exception) {
-                    _errorMessage.value = "Biometric decryption failed. Use PIN/Password."
+        try {
+            app.biometricAuthManager.promptBiometric(
+                activity = activity,
+                title = "Unlock KeyZone",
+                subtitle = "Touch sensor to unlock with biometric key",
+                onSuccess = {
+                    try {
+                        val masterKey = app.biometricAuthManager.unwrapMasterKey(
+                            vaultConfig.biometricWrappedMasterKey,
+                            vaultConfig.biometricIv
+                        )
+                        app.sessionMasterKey = masterKey
+                        failedAttempts = 0
+                        _errorMessage.value = null
+                        _isProcessing.value = false
+                        _appState.value = AppState.AUTHENTICATED
+                    } catch (_: Exception) {
+                        _errorMessage.value = "Biometric decryption failed. Use PIN/Password."
+                        _isProcessing.value = false
+                    }
+                },
+                onError = { error ->
+                    if (error.isEmpty()) {
+                        _errorMessage.value = null
+                    } else {
+                        _errorMessage.value = error
+                    }
                     _isProcessing.value = false
                 }
-            },
-            onError = { error ->
-                _errorMessage.value = error
-                _isProcessing.value = false
-            }
-        )
+            )
+        } catch (_: Exception) {
+            _isProcessing.value = false
+            _errorMessage.value = "Biometric prompt failed to start."
+        }
     }
 
     // ═══════════════════════════════════════

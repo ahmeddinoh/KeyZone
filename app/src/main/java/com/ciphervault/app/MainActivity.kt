@@ -1,12 +1,12 @@
 package com.ciphervault.app
 
 import android.os.Bundle
-import android.os.Parcelable
 import android.content.Intent
 import android.net.Uri
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.IntentCompat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -45,10 +45,10 @@ class MainActivity : FragmentActivity() {
         intent ?: return
         val uris = mutableListOf<Uri>()
         if (intent.action == Intent.ACTION_SEND) {
-            (intent.getParcelableExtra<android.os.Parcelable>(Intent.EXTRA_STREAM) as? Uri)?.let { uris.add(it) }
+            IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)?.let { uris.add(it) }
         } else if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
-            intent.getParcelableArrayListExtra<android.os.Parcelable>(Intent.EXTRA_STREAM)?.forEach { parcelable ->
-                (parcelable as? Uri)?.let { uris.add(it) }
+            IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)?.forEach { uri ->
+                uris.add(uri)
             }
         }
         if (uris.isNotEmpty()) {
@@ -63,6 +63,9 @@ class MainActivity : FragmentActivity() {
 
     override fun onStop() {
         super.onStop()
+        if (isChangingConfigurations) {
+            return
+        }
         if (app.ignoreNextBackgroundLock) {
             app.ignoreNextBackgroundLock = false
             return

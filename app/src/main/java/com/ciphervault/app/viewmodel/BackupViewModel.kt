@@ -113,6 +113,21 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /**
+     * Disables TOTP by clearing the local secret, resetting configuration, and clearing UI state.
+     */
+    fun disableTotp() {
+        app.totpManager.clearSecretLocally()
+        app.vaultConfig.isTotpConfigured = false
+        totpSecret = null
+        _isTotpConfigured.value = false
+        _isTotpVerified.value = false
+        _qrBitmap.value = null
+        _otpAuthUri.value = null
+        _recoveryCodes.value = emptyList()
+        _message.value = "Authenticator disabled"
+    }
+
     // ═══════════════════════════════════════
     //  Backup Creation & Export
     // ═══════════════════════════════════════

@@ -111,26 +111,50 @@ class CryptoManager {
      * Automatically applies GZIP compression if it reduces data size,
      * significantly shrinking text, documents, PDFs, and database files.
      */
-    fun encrypt(inputStream: InputStream, outputStream: OutputStream, key: ByteArray) {
+    fun encrypt(inputStream: InputStream, outputStream: OutputStream, key: ByteArray, totalSize: Long = 0L, onProgress: ((Float) -> Unit)? = null) {
         val secretKey = SecretKeySpec(key, "AES")
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
-
-        val iv = cipher.iv
-        outputStream.write(iv.size)
-        outputStream.write(iv)
-
-        val buffer = ByteArray(8192)
-        var read: Int
-        while (inputStream.read(buffer).also { read = it } != -1) {
-            val output = cipher.update(buffer, 0, read)
-            if (output != null) {
-                outputStream.write(output)
+        
+        outputStream.write(FLAG_CHUNKED_V3.toInt())
+        
+        val baseIv = ByteArray(12)
+        SecureRandom().nextBytes(baseIv)
+        outputStream.write(baseIv.size)
+        outputStream.write(baseIv)
+        
+        val buffer = ByteArray(CHUNK_SIZE)
+        var totalRead = 0L
+        var chunkIndex = 0
+        
+        while (true) {
+            var readOffset = 0
+            while (readOffset < CHUNK_SIZE) {
+                val read = inputStream.read(buffer, readOffset, CHUNK_SIZE - readOffset)
+                if (read == -1) break
+                readOffset += read
             }
-        }
-        val finalOutput = cipher.doFinal()
-        if (finalOutput != null) {
-            outputStream.write(finalOutput)
+            
+            if (readOffset == 0) break
+            
+            val chunkIv = baseIv.copyOf()
+            val indexBytes = java.nio.ByteBuffer.allocate(4).putInt(chunkIndex).array()
+            for (i in 0..3) {
+                chunkIv[8 + i] = (chunkIv[8 + i].toInt() xor indexBytes[i].toInt()).toByte()
+            }
+            
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey, GCMParameterSpec(GCM_TAG_LENGTH, chunkIv))
+            
+            val encryptedChunk = cipher.doFinal(buffer, 0, readOffset)
+            
+            val lenBytes = java.nio.ByteBuffer.allocate(4).putInt(encryptedChunk.size).array()
+            outputStream.write(lenBytes)
+            outputStream.write(encryptedChunk)
+            
+            totalRead += readOffset
+            if (totalSize > 0L) {
+                onProgress?.invoke(totalRead.toFloat() / totalSize)
+            }
+            chunkIndex++
         }
         outputStream.flush()
     }
@@ -142,6 +166,48 @@ class CryptoManager {
     fun decrypt(inputStream: InputStream, outputStream: OutputStream, key: ByteArray) {
         val firstByte = inputStream.read()
         if (firstByte < 0) throw IllegalStateException("Invalid encrypted data: empty stream")
+
+        if (firstByte.toByte() == FLAG_CHUNKED_V3) {
+            val ivSize = inputStream.read()
+            if (ivSize < 0) throw IllegalStateException("Invalid encrypted data: cannot read IV size")
+            val baseIv = readFully(inputStream, ivSize)
+            
+            val secretKey = SecretKeySpec(key, "AES")
+            var chunkIndex = 0
+            
+            while (true) {
+                val lenBytes = ByteArray(4)
+                var readOffset = 0
+                while (readOffset < 4) {
+                    val read = inputStream.read(lenBytes, readOffset, 4 - readOffset)
+                    if (read == -1) break
+                    readOffset += read
+                }
+                if (readOffset == 0) break // EOF at chunk boundary
+                if (readOffset < 4) throw IllegalStateException("Corrupt chunk size")
+                
+                val chunkLen = java.nio.ByteBuffer.wrap(lenBytes).int
+                if (chunkLen < 0 || chunkLen > CHUNK_SIZE + 64) throw IllegalStateException("Invalid chunk size")
+                
+                val encryptedChunk = readFully(inputStream, chunkLen)
+                
+                val chunkIv = baseIv.copyOf()
+                val indexBytes = java.nio.ByteBuffer.allocate(4).putInt(chunkIndex).array()
+                for (i in 0..3) {
+                    chunkIv[8 + i] = (chunkIv[8 + i].toInt() xor indexBytes[i].toInt()).toByte()
+                }
+                
+                val cipher = Cipher.getInstance(TRANSFORMATION)
+                cipher.init(Cipher.DECRYPT_MODE, secretKey, GCMParameterSpec(GCM_TAG_LENGTH, chunkIv))
+                
+                val decryptedChunk = cipher.doFinal(encryptedChunk)
+                outputStream.write(decryptedChunk)
+                
+                chunkIndex++
+            }
+            outputStream.flush()
+            return
+        }
 
         val isCompressed: Boolean
         val ivSize: Int
@@ -293,8 +359,10 @@ class CryptoManager {
         private const val PBKDF2_ITERATIONS = 150_000
         private const val PBKDF2_KEY_LENGTH = 256 // bits
         private const val KEY_VERIFICATION_PLAINTEXT = "CIPHERVAULT_KEY_OK_v1"
+        private const val CHUNK_SIZE = 1024 * 1024 // 1MB
 
         // Format version / compression flags
         const val FLAG_COMPRESSED_V2: Byte = 0xF1.toByte()
+        const val FLAG_CHUNKED_V3: Byte = 0xF2.toByte()
     }
 }

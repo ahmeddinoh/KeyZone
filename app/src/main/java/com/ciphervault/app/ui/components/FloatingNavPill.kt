@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
@@ -39,9 +40,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -85,16 +90,33 @@ fun FloatingNavPill(
 ) {
     val shape = RoundedCornerShape(32.dp)
     val blurSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val haptics = LocalHapticFeedback.current
+
+    // Light catches the top edge of the glass and fades toward the bottom.
+    val edge = Brush.verticalGradient(
+        listOf(
+            VaultColors.GlassBorder,
+            VaultColors.GlassBorder.copy(alpha = VaultColors.GlassBorder.alpha * 0.4f),
+        )
+    )
 
     Row(
         modifier = modifier
             .navigationBarsPadding()
             .padding(bottom = PillBottomGap)
-            .fillMaxWidth(0.8f)
-            .widthIn(max = 320.dp)
+            // Wide enough that the selected tab's label still fits on a 320dp-wide screen.
+            .fillMaxWidth(0.88f)
+            .widthIn(max = 340.dp)
             .height(PillHeight)
             .shadow(24.dp, shape, ambientColor = Color.Black, spotColor = Color.Black)
             .clip(shape)
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        awaitPointerEvent().changes.forEach { it.consume() }
+                    }
+                }
+            }
             .then(
                 if (blurSupported) {
                     Modifier.hazeChild(
@@ -110,7 +132,7 @@ fun FloatingNavPill(
                     Modifier.background(VaultColors.GlassFallback)
                 }
             )
-            .border(1.dp, VaultColors.GlassBorder, shape)
+            .border(1.dp, edge, shape)
             .padding(8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -119,7 +141,12 @@ fun FloatingNavPill(
             NavPillItem(
                 tab = tab,
                 selected = tab == selected,
-                onClick = { onSelect(tab) },
+                onClick = {
+                    if (tab != selected) {
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    }
+                    onSelect(tab)
+                },
             )
         }
     }
@@ -156,7 +183,7 @@ private fun NavPillItem(tab: VaultTab, selected: Boolean, onClick: () -> Unit) {
             imageVector = tab.icon,
             contentDescription = null,
             tint = fg,
-            modifier = Modifier.width(20.dp).height(20.dp),
+            modifier = Modifier.size(20.dp),
         )
         AnimatedVisibility(
             visible = selected,
