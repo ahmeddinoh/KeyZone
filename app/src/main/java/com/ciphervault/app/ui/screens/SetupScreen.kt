@@ -68,6 +68,8 @@ import androidx.compose.ui.unit.sp
 import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
 import com.ciphervault.app.viewmodel.AuthViewModel
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 
 /**
  * Vault creation screen.
@@ -77,6 +79,7 @@ import com.ciphervault.app.viewmodel.AuthViewModel
 @Composable
 fun SetupScreen(
     authViewModel: AuthViewModel,
+    onBack: () -> Unit,
     onComplete: () -> Unit
 ) {
     val errorMessage by authViewModel.errorMessage.collectAsState()
@@ -87,6 +90,10 @@ fun SetupScreen(
     var confirmKey by remember { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
     var localError by remember { mutableStateOf<String?>(null) }
+    
+    BackHandler {
+        onBack()
+    }
 
     val isPin = keyType == "pin"
     val minLength = 4
@@ -125,8 +132,29 @@ fun SetupScreen(
             .systemBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 24.dp)
+            .padding(horizontal = 24.dp, vertical = 20.dp)
     ) {
+        // ---- Back ----
+        Box(modifier = Modifier.height(44.dp)) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(VaultColors.SurfaceRaised)
+                    .border(1.dp, VaultColors.Hairline, CircleShape)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back",
+                    tint = VaultColors.TextPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
         // ---- Header ----
         Text(
             text = "Create your",

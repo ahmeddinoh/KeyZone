@@ -225,7 +225,7 @@ fun BackupScreen(
                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Text(
-                                text = if (isTotpConfigured) "2FA PROTECTED" else "SETUP REQUIRED",
+                                text = if (isTotpConfigured) "2FA PROTECTED" else "NOT CONFIGURED",
                                 style = VaultType.Meta,
                                 color = statusTint,
                                 fontWeight = FontWeight.Bold
@@ -477,66 +477,69 @@ fun BackupScreen(
         }
 
         // ═════════════════════════════════════════════════
-        //  FLOW 2: 2FA ACTIVE (EXPORT & RECOVERY CODES)
+        //  PORTABLE ARCHIVE EXPORT (ALWAYS AVAILABLE)
         // ═════════════════════════════════════════════════
-        if (isTotpConfigured) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = "PORTABLE ARCHIVE EXPORT",
-                        style = VaultType.GroupLabel,
-                        color = VaultColors.TextSecondary,
-                        modifier = Modifier.padding(start = 14.dp)
-                    )
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "PORTABLE ARCHIVE EXPORT",
+                    style = VaultType.GroupLabel,
+                    color = VaultColors.TextSecondary,
+                    modifier = Modifier.padding(start = 14.dp)
+                )
 
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = VaultColors.Surface),
-                        shape = RoundedCornerShape(24.dp),
-                        border = BorderStroke(1.dp, VaultColors.Hairline)
-                    ) {
-                        Column(modifier = Modifier.padding(22.dp)) {
-                            // Card Header
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(VaultColors.AccentTint)
-                                        .border(1.dp, VaultColors.Hairline, RoundedCornerShape(12.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Shield,
-                                        contentDescription = null,
-                                        tint = VaultColors.Accent,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(14.dp))
-                                Column {
-                                    Text(
-                                        text = "Export Vault Backup",
-                                        style = VaultType.ItemTitle,
-                                        color = VaultColors.TextPrimary
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = "Encrypted .cvault container",
-                                        style = VaultType.Meta,
-                                        color = VaultColors.TextSecondary
-                                    )
-                                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = VaultColors.Surface),
+                    shape = RoundedCornerShape(24.dp),
+                    border = BorderStroke(1.dp, VaultColors.Hairline)
+                ) {
+                    Column(modifier = Modifier.padding(22.dp)) {
+                        // Card Header
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(VaultColors.AccentTint)
+                                    .border(1.dp, VaultColors.Hairline, RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Shield,
+                                    contentDescription = null,
+                                    tint = VaultColors.Accent,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column {
+                                Text(
+                                    text = "Export Vault Backup",
+                                    style = VaultType.ItemTitle,
+                                    color = VaultColors.TextPrimary
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Encrypted .cvault container",
+                                    style = VaultType.Meta,
+                                    color = VaultColors.TextSecondary
+                                )
+                            }
+                        }
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                            Text(
-                                text = "Bundles all encrypted files and your portable 2FA credentials into a single archive for local storage or cross-device transfer.",
-                                style = VaultType.Meta,
-                                color = VaultColors.TextSecondary,
-                                lineHeight = 18.sp
-                            )
+                        Text(
+                            text = if (isTotpConfigured) {
+                                "Bundles all encrypted files and your portable 2FA credentials into a single archive for local storage or cross-device transfer."
+                            } else {
+                                "Bundles all encrypted files into a single archive for local storage or cross-device transfer. Enable 2FA above for extra security."
+                            },
+                            style = VaultType.Meta,
+                            color = VaultColors.TextSecondary,
+                            lineHeight = 18.sp
+                        )
 
                             Spacer(modifier = Modifier.height(18.dp))
 
@@ -703,6 +706,10 @@ fun BackupScreen(
                 }
             }
 
+        // ═════════════════════════════════════════════════
+        //  FLOW 2: 2FA ACTIVE (RECOVERY CODES & DISABLE)
+        // ═════════════════════════════════════════════════
+        if (isTotpConfigured) {
             // ── Emergency Recovery Codes Card ──
             if (recoveryCodes.isNotEmpty()) {
                 item {

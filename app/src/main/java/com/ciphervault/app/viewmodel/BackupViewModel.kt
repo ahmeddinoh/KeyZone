@@ -118,6 +118,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
      */
     fun disableTotp() {
         app.totpManager.clearSecretLocally()
+        app.recoveryCodeManager.clear()
         app.vaultConfig.isTotpConfigured = false
         totpSecret = null
         _isTotpConfigured.value = false

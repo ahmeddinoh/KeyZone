@@ -131,6 +131,14 @@ fun ImportScreen(
     val canSubmitKey = keyInput.length >= 4 && !isLoading
     val canSubmitTotp = (if (useRecoveryCode) totpInput.length >= 8 else totpInput.length == 6) && !isLoading
 
+    androidx.activity.compose.BackHandler(enabled = !isSuccess) {
+        if (step == ImportViewModel.ImportStep.SELECT_FILE) {
+            onBack()
+        } else {
+            importViewModel.reset()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -401,7 +409,11 @@ fun ImportScreen(
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "From now on you only need your PIN or password to unlock. The authenticator 2FA code isn't needed for daily use.",
+                                text = if (backupInfo?.hasTotp == true) {
+                                    "From now on you only need your PIN or password to unlock. The authenticator 2FA code isn't needed for daily use."
+                                } else {
+                                    "From now on you only need your PIN or password to unlock. You can enable 2FA later in Settings."
+                                },
                                 style = VaultType.Meta,
                                 color = VaultColors.TextSecondary,
                                 lineHeight = 20.sp

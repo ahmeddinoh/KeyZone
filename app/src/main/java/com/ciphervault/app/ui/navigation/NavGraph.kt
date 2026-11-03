@@ -118,6 +118,13 @@ fun CipherVaultNavHost() {
 
     var welcomeDestination by remember { mutableStateOf(WelcomeDestination.WELCOME) }
 
+    // Ensure we always start at the Welcome screen if the state drops back to WELCOME (e.g. after a factory reset)
+    LaunchedEffect(appState) {
+        if (appState == AuthViewModel.AppState.WELCOME) {
+            welcomeDestination = WelcomeDestination.WELCOME
+        }
+    }
+
     AnimatedContent(
         targetState = appState,
         transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -135,6 +142,7 @@ fun CipherVaultNavHost() {
                     WelcomeDestination.SETUP -> {
                         SetupScreen(
                             authViewModel = authViewModel,
+                            onBack = { welcomeDestination = WelcomeDestination.WELCOME },
                             onComplete = {
                                 // Once setup completes, authViewModel sets state to AUTHENTICATED
                             }

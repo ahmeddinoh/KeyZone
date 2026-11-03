@@ -76,13 +76,15 @@ class VaultBackupManager(
             put("keyVerification", encB64(vaultConfig.keyVerification))
 
             // TOTP secret encrypted with master key (portable across devices)
-            if (totpSecret != null) {
+            if (vaultConfig.isTotpConfigured && totpSecret != null) {
                 val encTotp = totpManager.encryptSecretForBackup(totpSecret, masterKey)
                 put("totpSecretEncrypted", encB64(encTotp))
             }
 
             // Recovery code hashes
-            put("recoveryCodesHashed", JSONArray(recoveryCodeManager.getHashedCodes().toList()))
+            if (vaultConfig.isTotpConfigured) {
+                put("recoveryCodesHashed", JSONArray(recoveryCodeManager.getHashedCodes().toList()))
+            }
 
             // File metadata
             val fileArray = JSONArray()

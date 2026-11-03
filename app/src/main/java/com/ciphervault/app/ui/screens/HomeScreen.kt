@@ -32,6 +32,10 @@ import com.ciphervault.app.viewmodel.VaultViewModel
 import java.util.Calendar
 import kotlin.math.log10
 import kotlin.math.pow
+import androidx.activity.compose.BackHandler
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
 
 @Composable
 fun HomeScreen(
@@ -39,6 +43,26 @@ fun HomeScreen(
     onNavigateToTab: (String) -> Unit,
     onNavigateToBackup: () -> Unit
 ) {
+    val context = LocalContext.current
+    var backPressCount by remember { mutableIntStateOf(0) }
+    
+    LaunchedEffect(backPressCount) {
+        if (backPressCount > 0) {
+            delay(2000)
+            backPressCount = 0
+        }
+    }
+    
+    BackHandler {
+        if (backPressCount == 0) {
+            backPressCount++
+            Toast.makeText(context, "Press back button again to exit", Toast.LENGTH_SHORT).show()
+        } else {
+            val activity = context as? android.app.Activity
+            activity?.finish()
+        }
+    }
+
     val files by vaultViewModel.files.collectAsState()
     val recentFiles = remember(files) { files.take(5) }
     val totalSize by vaultViewModel.totalSize.collectAsState()

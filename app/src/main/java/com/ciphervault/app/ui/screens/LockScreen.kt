@@ -85,6 +85,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
 import com.ciphervault.app.viewmodel.AuthViewModel
+import androidx.activity.compose.BackHandler
+import android.widget.Toast
+import androidx.compose.runtime.mutableIntStateOf
+import kotlinx.coroutines.delay
 
 /**
  * Enhanced Lock Screen with dynamic PIN length, auto-submit,
@@ -102,11 +106,29 @@ fun LockScreen(authViewModel: AuthViewModel) {
 
     var input by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(value = false) }
+    var backPressCount by remember { mutableIntStateOf(0) }
 
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val shakeOffset = remember { Animatable(0f) }
+
+    LaunchedEffect(backPressCount) {
+        if (backPressCount > 0) {
+            delay(2000)
+            backPressCount = 0
+        }
+    }
+
+    BackHandler {
+        if (backPressCount == 0) {
+            backPressCount++
+            Toast.makeText(context, "Press back button again to exit", Toast.LENGTH_SHORT).show()
+        } else {
+            val activity = context as? android.app.Activity
+            activity?.finish()
+        }
+    }
 
     val isPin = keyType == "pin"
     val isBiometricEnabled = authViewModel.isBiometricEnabled && authViewModel.isBiometricAvailable

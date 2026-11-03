@@ -59,6 +59,11 @@ import com.ciphervault.app.R
 import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
 import java.util.Locale
+import androidx.activity.compose.BackHandler
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.delay
+import androidx.compose.runtime.mutableIntStateOf
 
 /** The two languages the app will offer. */
 enum class AppLanguage(val tag: String, val label: String) {
@@ -93,6 +98,26 @@ fun WelcomeScreen(
     initialLanguage: AppLanguage = AppLanguage.English,
     onLanguageChange: (AppLanguage) -> Unit = {}
 ) {
+    val context = LocalContext.current
+    var backPressCount by remember { mutableIntStateOf(0) }
+    
+    LaunchedEffect(backPressCount) {
+        if (backPressCount > 0) {
+            delay(2000)
+            backPressCount = 0
+        }
+    }
+    
+    BackHandler {
+        if (backPressCount == 0) {
+            backPressCount++
+            Toast.makeText(context, "Press back button again to exit", Toast.LENGTH_SHORT).show()
+        } else {
+            val activity = context as? android.app.Activity
+            activity?.finish()
+        }
+    }
+
     // PLACEHOLDER: the switch only remembers which side was tapped and reports it through
     // onLanguageChange. Nothing on this screen changes language yet; the copy is English only.
     var languageTag by rememberSaveable { mutableStateOf(initialLanguage.tag) }
