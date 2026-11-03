@@ -2,26 +2,36 @@ package com.ciphervault.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
+/**
+ * Key Zone "Noir" palette: a near-black ground, brass gold as the single accent, and warm cream
+ * text. It matches the welcome screen, so the whole app reads as one place.
+ */
 object VaultColors {
-    val Ground = Color(0xFF0E1013)
-    val Surface = Color(0xFF171A1F)
-    val SurfaceRaised = Color(0xFF262A31)
-    val Hairline = Color.White.copy(alpha = 0.06f)
+    // Grounds, from the page itself up to things that sit on top of it
+    val Ground = Color(0xFF0E0F14)
+    val Surface = Color(0xFF161820)
+    val SurfaceRaised = Color(0xFF20222B)
+    val SurfaceHighest = Color(0xFF2A2D37)
 
-    val TextPrimary = Color(0xFFF1EFEA)
-    val TextSecondary = Color(0xFFA3A7AF)
+    // A faint warm line, the same cream as the text so it never looks grey
+    val Hairline = Color(0xFFF3EDE2).copy(alpha = 0.08f)
 
-    val Accent = Color(0xFFE6D5B0)
-    val OnAccent = Color(0xFF1A1710)
-    val AccentTint = Accent.copy(alpha = 0.10f)
+    val TextPrimary = Color(0xFFF3EDE2)
+    val TextSecondary = Color(0xFFB3AFA5)
+
+    // Brass gold
+    val Accent = Color(0xFFD4B26A)
+    val OnAccent = Color(0xFF17130A)
+    val AccentTint = Accent.copy(alpha = 0.12f)
+    val AccentContainer = Color(0xFF2B2516) // a dark, gold-tinted fill for selected states
 
     // Nav pill glass
-    val GlassFill = Color(0xFF22252C).copy(alpha = 0.55f)
-    val GlassFallback = Color(0xFF22252C).copy(alpha = 0.94f) // API < 31, no blur
-    val GlassBorder = Color.White.copy(alpha = 0.10f)
-    
-    // Semantic colors (reusing old colors for error/warning/success contexts where needed)
+    val GlassFill = Color(0xFF1A1C24).copy(alpha = 0.55f)
+    val GlassFallback = Color(0xFF1A1C24).copy(alpha = 0.94f) // API < 31, no blur
+    val GlassBorder = Accent.copy(alpha = 0.18f) // a thin gold edge, like the portal's arches
+
+    // Semantic colors. Warning is orange rather than amber so it never reads as the gold accent.
     val ErrorRed = Color(0xFFF43F5E)
-    val WarningAmber = Color(0xFFF59E0B)
-    val SuccessGreen = Color(0xFF22C55E)
+    val WarningAmber = Color(0xFFE8833A)
+    val SuccessGreen = Color(0xFF43B77C)
 }
