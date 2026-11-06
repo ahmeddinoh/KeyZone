@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Outer Shield / Vault outline or stylized K key logo -->
+    <path
+        android:fillColor="#FFDAC2"
+        android:pathData="M24,4 L10,10 V22 C10,31.5 16 40.1 24,44 C32,40.1 38,31.5 38,22 V10 L24,4 Z" />
+    <path
+        android:fillColor="#121212"
+        android:pathData="M22,14 H26 V24 L31,19 H36 L30,25 L36,33 H31 L26,26.5 V33 H22 V14 Z" />
+</vector>

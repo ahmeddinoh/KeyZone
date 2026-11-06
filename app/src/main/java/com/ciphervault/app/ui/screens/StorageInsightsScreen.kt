@@ -35,6 +35,9 @@ import com.ciphervault.app.ui.theme.VaultType
 import com.ciphervault.app.viewmodel.VaultViewModel
 import com.ciphervault.app.ui.screens.formatFileSize
 
+import androidx.compose.ui.res.stringResource
+import com.ciphervault.app.R
+
 private val ColorImage = Color(0xFF38BDF8)
 private val ColorDocument = Color(0xFFFB7185)
 private val ColorAudio = Color(0xFFC084FC)
@@ -48,14 +51,21 @@ fun StorageInsightsScreen(
     val files by vaultViewModel.files.collectAsState()
     val totalSize by vaultViewModel.totalSize.collectAsState()
 
-    val segments = remember(files) {
+    val sImages = stringResource(R.string.storage_images)
+    val sVideos = stringResource(R.string.storage_videos)
+    val sDocuments = stringResource(R.string.storage_documents)
+    val sAudio = stringResource(R.string.storage_audio)
+    val sNotesKeys = stringResource(R.string.storage_notes_keys)
+    val sOther = stringResource(R.string.storage_other)
+
+    val segments = remember(files, sImages, sVideos, sDocuments, sAudio, sNotesKeys, sOther) {
         listOf(
-            Triple("Images", ColorImage, files.filter { matchesCategory(it, "Images") }.sumOf { it.originalSize }),
-            Triple("Videos", VaultColors.WarningAmber, files.filter { matchesCategory(it, "Videos") }.sumOf { it.originalSize }),
-            Triple("Documents", ColorDocument, files.filter { matchesCategory(it, "Documents") }.sumOf { it.originalSize }),
-            Triple("Audio", ColorAudio, files.filter { matchesCategory(it, "Audio") }.sumOf { it.originalSize }),
-            Triple("Notes & Keys", ColorNote, files.filter { matchesCategory(it, "Notes & Keys") }.sumOf { it.originalSize }),
-            Triple("Other", VaultColors.TextSecondary, files.filter { matchesCategory(it, "Other") }.sumOf { it.originalSize })
+            Triple(sImages, ColorImage, files.filter { matchesCategory(it, "Images") }.sumOf { it.originalSize }),
+            Triple(sVideos, VaultColors.WarningAmber, files.filter { matchesCategory(it, "Videos") }.sumOf { it.originalSize }),
+            Triple(sDocuments, ColorDocument, files.filter { matchesCategory(it, "Documents") }.sumOf { it.originalSize }),
+            Triple(sAudio, ColorAudio, files.filter { matchesCategory(it, "Audio") }.sumOf { it.originalSize }),
+            Triple(sNotesKeys, ColorNote, files.filter { matchesCategory(it, "Notes & Keys") }.sumOf { it.originalSize }),
+            Triple(sOther, VaultColors.TextSecondary, files.filter { matchesCategory(it, "Other") }.sumOf { it.originalSize })
         ).filter { it.third > 0 }.sortedByDescending { it.third }
     }
 
@@ -87,7 +97,7 @@ fun StorageInsightsScreen(
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.setup_back),
                             tint = VaultColors.TextPrimary,
                             modifier = Modifier.size(18.dp)
                         )
@@ -96,12 +106,12 @@ fun StorageInsightsScreen(
 
                 Column {
                     Text(
-                        text = "Storage",
+                        text = stringResource(R.string.storage_title_1),
                         style = VaultType.PageTitle,
                         color = VaultColors.TextPrimary
                     )
                     Text(
-                        text = "insights.",
+                        text = stringResource(R.string.storage_title_2),
                         style = VaultType.PageTitle.copy(fontStyle = FontStyle.Italic),
                         color = VaultColors.Accent
                     )
@@ -120,7 +130,7 @@ fun StorageInsightsScreen(
                     modifier = Modifier.padding(22.dp)
                 ) {
                     Text(
-                        text = "Total Payload",
+                        text = stringResource(R.string.storage_total_payload),
                         style = VaultType.Meta,
                         color = VaultColors.TextSecondary
                     )
@@ -132,7 +142,7 @@ fun StorageInsightsScreen(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${files.size} securely encrypted items",
+                        text = stringResource(R.string.storage_encrypted_items, files.size),
                         style = VaultType.Meta,
                         color = VaultColors.TextSecondary
                     )
@@ -204,7 +214,7 @@ fun StorageInsightsScreen(
         if (largestFiles.isNotEmpty()) {
             item {
                 Text(
-                    text = "LARGEST FILES",
+                    text = stringResource(R.string.storage_largest_files),
                     style = VaultType.GroupLabel,
                     color = VaultColors.TextSecondary,
                     modifier = Modifier.padding(start = 14.dp, bottom = 4.dp)

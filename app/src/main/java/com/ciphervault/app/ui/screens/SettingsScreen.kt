@@ -2,6 +2,14 @@ package com.ciphervault.app.ui.screens
 
 import android.app.Activity
 import android.view.WindowManager
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,7 +36,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import com.ciphervault.app.CipherVaultApp
+import com.ciphervault.app.R
 import com.ciphervault.app.ui.components.rememberNavPillClearance
 import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
@@ -56,8 +68,12 @@ fun SettingsScreen(
 
     var biometricEnabled by remember { mutableStateOf(vaultConfig.isBiometricEnabled) }
     var autoLockEnabled by remember { mutableStateOf(vaultConfig.autoLockOnBackground) }
+    var autoLockDelayMillis by remember { mutableStateOf(vaultConfig.autoLockDelayMillis) }
     var screenProtectionEnabled by remember { mutableStateOf(vaultConfig.screenProtectionEnabled) }
     var deleteOriginalEnabled by remember { mutableStateOf(vaultConfig.deleteOriginalAfterEncryption) }
+    
+    var showAutoLockDelayDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
     // Calculate active shields for the top posture indicator
     val totalShields = if (authViewModel.isBiometricAvailable) 3 else 2
@@ -65,251 +81,306 @@ fun SettingsScreen(
             (if (autoLockEnabled) 1 else 0) +
             (if (screenProtectionEnabled) 1 else 0)
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 22.dp,
-            end = 22.dp,
-            top = 56.dp,
-            bottom = rememberNavPillClearance() + 20.dp,
-        ),
-        verticalArrangement = Arrangement.spacedBy(28.dp)
-    ) {
-        // ── Top Bar & Editorial Header ──
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Security Posture Pill
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (activeShields == totalShields) VaultColors.Accent
-                                    else VaultColors.WarningAmber
-                                )
-                        )
-                        Text(
-                            text = "$activeShields of $totalShields shields active",
-                            style = VaultType.Meta,
-                            color = VaultColors.TextSecondary
-                        )
-                    }
+    val currentLanguage = AppLanguage.current()
 
-                    // Quick Lock Action Pill
-                    Surface(
-                        onClick = { authViewModel.lock() },
-                        shape = CircleShape,
-                        color = VaultColors.Surface,
-                        border = BorderStroke(1.dp, VaultColors.Hairline)
+    AnimatedContent(
+        targetState = currentLanguage,
+        transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) },
+        label = "language_transition"
+    ) { language ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 22.dp,
+                end = 22.dp,
+                top = 56.dp,
+                bottom = rememberNavPillClearance() + 20.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(28.dp)
+        ) {
+            // ── Top Bar & Editorial Header ──
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Security Posture Pill
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Lock,
-                                contentDescription = "Lock Vault Now",
-                                tint = VaultColors.WarningAmber,
-                                modifier = Modifier.size(14.dp)
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (activeShields == totalShields) VaultColors.Accent
+                                        else VaultColors.WarningAmber
+                                    )
                             )
                             Text(
-                                text = "Lock now",
+                                text = stringResource(R.string.settings_shields_active, activeShields, totalShields),
                                 style = VaultType.Meta,
-                                color = VaultColors.TextPrimary
+                                color = VaultColors.TextSecondary
                             )
                         }
+
+                        // Quick Lock Action Pill
+                        Surface(
+                            onClick = { authViewModel.lock() },
+                            shape = CircleShape,
+                            color = VaultColors.Surface,
+                            border = BorderStroke(1.dp, VaultColors.Hairline)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Lock,
+                                    contentDescription = "Lock Vault Now",
+                                    tint = VaultColors.WarningAmber,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = stringResource(R.string.settings_lock_now),
+                                    style = VaultType.Meta,
+                                    color = VaultColors.TextPrimary
+                                )
+                            }
+                        }
+                    }
+
+                    Column {
+                        Text(
+                            text = stringResource(R.string.settings_header_manage),
+                            style = VaultType.PageTitle,
+                            color = VaultColors.TextPrimary
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_header_vault),
+                            style = VaultType.PageTitle.copy(fontStyle = FontStyle.Italic),
+                            color = VaultColors.Accent
+                        )
                     }
                 }
+            }
 
-                Column {
-                    Text(
-                        text = "Manage your",
-                        style = VaultType.PageTitle,
-                        color = VaultColors.TextPrimary
-                    )
-                    Text(
-                        text = "vault settings.",
-                        style = VaultType.PageTitle.copy(fontStyle = FontStyle.Italic),
-                        color = VaultColors.Accent
-                    )
+            // ══════════════════════════════════════════════
+            //  SECTION 0: Preferences
+            // ══════════════════════════════════════════════
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionHeader(stringResource(R.string.settings_section_preferences))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = VaultColors.Surface),
+                        shape = RoundedCornerShape(22.dp),
+                        border = BorderStroke(1.dp, VaultColors.Hairline)
+                    ) {
+                        SettingsValueRow(
+                            icon = Icons.Outlined.Language,
+                            label = stringResource(R.string.settings_language_title),
+                            subtitle = stringResource(R.string.settings_language_desc),
+                            badgeText = stringResource(language.labelRes),
+                            onClick = { showLanguageDialog = true },
+                            showChevron = true
+                        )
+                    }
                 }
             }
-        }
 
-        // ══════════════════════════════════════════════
-        //  SECTION 1: Security & Access Control
-        // ══════════════════════════════════════════════
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SectionHeader("SECURITY & ACCESS CONTROL")
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = VaultColors.Surface),
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, VaultColors.Hairline)
-                ) {
-                    Column {
-                        if (authViewModel.isBiometricAvailable) {
+            // ══════════════════════════════════════════════
+            //  SECTION 1: Security & Access Control
+            // ══════════════════════════════════════════════
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionHeader(stringResource(R.string.settings_section_security))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = VaultColors.Surface),
+                        shape = RoundedCornerShape(22.dp),
+                        border = BorderStroke(1.dp, VaultColors.Hairline)
+                    ) {
+                        Column {
+                            if (authViewModel.isBiometricAvailable) {
+                                SettingsToggleRow(
+                                    icon = Icons.Outlined.Fingerprint,
+                                    label = stringResource(R.string.settings_biometric_title),
+                                    subtitle = stringResource(R.string.settings_biometric_desc),
+                                    checked = biometricEnabled,
+                                    onCheckedChange = { checked ->
+                                        if (authViewModel.setBiometricEnabled(checked)) {
+                                            biometricEnabled = checked
+                                        }
+                                    }
+                                )
+                                InsetDivider()
+                            }
+
                             SettingsToggleRow(
-                                icon = Icons.Outlined.Fingerprint,
-                                label = "Biometric Unlock",
-                                subtitle = "Use fingerprint or face hardware to unlock",
-                                checked = biometricEnabled,
+                                icon = Icons.Outlined.Timer,
+                                label = stringResource(R.string.settings_autolock_title),
+                                subtitle = stringResource(R.string.settings_autolock_desc),
+                                checked = autoLockEnabled,
                                 onCheckedChange = { checked ->
-                                    if (authViewModel.setBiometricEnabled(checked)) {
-                                        biometricEnabled = checked
+                                    autoLockEnabled = checked
+                                    vaultConfig.autoLockOnBackground = checked
+                                }
+                            )
+                            AnimatedVisibility(
+                                visible = autoLockEnabled,
+                                enter = expandVertically(),
+                                exit = shrinkVertically()
+                            ) {
+                                val delayText = when (autoLockDelayMillis) {
+                                    0L -> stringResource(R.string.settings_autolock_delay_0s)
+                                    30000L -> stringResource(R.string.settings_autolock_delay_30s)
+                                    60000L -> stringResource(R.string.settings_autolock_delay_1m)
+                                    180000L -> stringResource(R.string.settings_autolock_delay_3m)
+                                    300000L -> stringResource(R.string.settings_autolock_delay_5m)
+                                    else -> stringResource(R.string.settings_autolock_delay_0s)
+                                }
+                                SettingsValueRow(
+                                    icon = Icons.Outlined.HourglassEmpty,
+                                    label = stringResource(R.string.settings_autolock_delay_title),
+                                    subtitle = delayText,
+                                    onClick = { showAutoLockDelayDialog = true },
+                                    showChevron = true,
+                                    iconTint = VaultColors.TextSecondary,
+                                    textTint = VaultColors.TextPrimary
+                                )
+                            }
+                            InsetDivider()
+
+                            SettingsToggleRow(
+                                icon = Icons.Outlined.VisibilityOff,
+                                label = stringResource(R.string.settings_antiscreenshot_title),
+                                subtitle = stringResource(R.string.settings_antiscreenshot_desc),
+                                checked = screenProtectionEnabled,
+                                onCheckedChange = { checked ->
+                                    screenProtectionEnabled = checked
+                                    vaultConfig.screenProtectionEnabled = checked
+                                    (context as? Activity)?.let { activity ->
+                                        if (checked) {
+                                            activity.window.setFlags(
+                                                WindowManager.LayoutParams.FLAG_SECURE,
+                                                WindowManager.LayoutParams.FLAG_SECURE
+                                            )
+                                        } else {
+                                            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                                        }
                                     }
                                 }
                             )
                             InsetDivider()
+
+                            SettingsValueRow(
+                                icon = Icons.Outlined.CloudUpload,
+                                label = stringResource(R.string.settings_backup_title),
+                                subtitle = stringResource(R.string.settings_backup_desc),
+                                onClick = onNavigateToBackup,
+                                showChevron = true
+                            )
+                            InsetDivider()
+
+                            val keyLabel = if (authViewModel.keyType == "pin") "PIN" else "Password" // Can also extract these, but I'll keep it simple
+                            SettingsValueRow(
+                                icon = Icons.Outlined.LockReset,
+                                label = stringResource(R.string.settings_change_key_title, keyLabel),
+                                subtitle = stringResource(R.string.settings_change_key_desc, keyLabel),
+                                badgeText = keyLabel.uppercase(),
+                                onClick = onNavigateToChangeKey,
+                                showChevron = true
+                            )
                         }
+                    }
+                }
+            }
 
-                        SettingsToggleRow(
-                            icon = Icons.Outlined.Timer,
-                            label = "Auto-Lock on Exit",
-                            subtitle = "Immediately seal vault when app goes to background",
-                            checked = autoLockEnabled,
-                            onCheckedChange = { checked ->
-                                autoLockEnabled = checked
-                                vaultConfig.autoLockOnBackground = checked
-                            }
-                        )
-                        InsetDivider()
+            // ══════════════════════════════════════════════
+            //  SECTION 2: Storage & Data Management
+            // ══════════════════════════════════════════════
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionHeader(stringResource(R.string.settings_section_storage))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = VaultColors.Surface),
+                        shape = RoundedCornerShape(22.dp),
+                        border = BorderStroke(1.dp, VaultColors.Hairline)
+                    ) {
+                        Column {
+                            SettingsValueRow(
+                                icon = Icons.Outlined.PieChart,
+                                label = stringResource(R.string.settings_storage_insights_title),
+                                subtitle = stringResource(R.string.settings_storage_insights_desc),
+                                onClick = onNavigateToStorageInsights,
+                                showChevron = true
+                            )
 
-                        SettingsToggleRow(
-                            icon = Icons.Outlined.VisibilityOff,
-                            label = "Anti-Screenshot",
-                            subtitle = "Block screen capture and recent-apps previews",
-                            checked = screenProtectionEnabled,
-                            onCheckedChange = { checked ->
-                                screenProtectionEnabled = checked
-                                vaultConfig.screenProtectionEnabled = checked
-                                (context as? Activity)?.let { activity ->
-                                    if (checked) {
-                                        activity.window.setFlags(
-                                            WindowManager.LayoutParams.FLAG_SECURE,
-                                            WindowManager.LayoutParams.FLAG_SECURE
-                                        )
-                                    } else {
-                                        activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-                                    }
+                            HorizontalDivider(color = VaultColors.Hairline)
+
+                            SettingsToggleRow(
+                                icon = Icons.Outlined.DeleteSweep,
+                                label = stringResource(R.string.settings_shred_title),
+                                subtitle = stringResource(R.string.settings_shred_desc),
+                                checked = deleteOriginalEnabled,
+                                onCheckedChange = { checked ->
+                                    deleteOriginalEnabled = checked
+                                    vaultConfig.deleteOriginalAfterEncryption = checked
                                 }
-                            }
-                        )
-                        InsetDivider()
+                            )
+                            InsetDivider()
 
-                        SettingsValueRow(
-                            icon = Icons.Outlined.CloudUpload,
-                            label = "Backup & 2FA",
-                            subtitle = "Encrypted snapshots & recovery verification",
-                            onClick = onNavigateToBackup,
-                            showChevron = true
-                        )
-                        InsetDivider()
-
-                        val keyLabel = if (authViewModel.keyType == "pin") "PIN" else "Password"
-                        SettingsValueRow(
-                            icon = Icons.Outlined.LockReset,
-                            label = "Change $keyLabel",
-                            subtitle = "Re-wrap master key with a new $keyLabel",
-                            badgeText = keyLabel.uppercase(),
-                            onClick = onNavigateToChangeKey,
-                            showChevron = true
-                        )
+                            SettingsValueRow(
+                                icon = Icons.Outlined.ClearAll,
+                                label = stringResource(R.string.settings_clear_cache_title),
+                                subtitle = stringResource(R.string.settings_clear_cache_desc),
+                                onClick = { showClearCacheDialog = true },
+                                showChevron = false
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        // ══════════════════════════════════════════════
-        //  SECTION 2: Storage & Data Management
-        // ══════════════════════════════════════════════
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SectionHeader("STORAGE & DATA")
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = VaultColors.Surface),
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, VaultColors.Hairline)
-                ) {
-                    Column {
-                        SettingsValueRow(
-                            icon = Icons.Outlined.PieChart,
-                            label = "Storage Insights",
-                            subtitle = "View storage distribution and largest files",
-                            onClick = onNavigateToStorageInsights,
-                            showChevron = true
-                        )
-
-                        HorizontalDivider(color = VaultColors.Hairline)
-
-                        SettingsToggleRow(
-                            icon = Icons.Outlined.DeleteSweep,
-                            label = "Shred Source by Default",
-                            subtitle = "Delete original unencrypted file after import",
-                            checked = deleteOriginalEnabled,
-                            onCheckedChange = { checked ->
-                                deleteOriginalEnabled = checked
-                                vaultConfig.deleteOriginalAfterEncryption = checked
-                            }
-                        )
-                        InsetDivider()
-
-                        SettingsValueRow(
-                            icon = Icons.Outlined.ClearAll,
-                            label = "Clear Decrypted Cache",
-                            subtitle = "Purge temporary viewing files from local memory",
-                            onClick = { showClearCacheDialog = true },
-                            showChevron = false
-                        )
-                    }
-                }
-            }
-        }
-
-        // ══════════════════════════════════════════════
-        //  SECTION 3: Danger Zone
-        // ══════════════════════════════════════════════
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SectionHeader("DANGER ZONE")
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = VaultColors.Surface),
-                    shape = RoundedCornerShape(22.dp),
-                    border = BorderStroke(1.dp, VaultColors.Hairline)
-                ) {
-                    Column {
-                        SettingsValueRow(
-                            icon = Icons.Outlined.Lock,
-                            label = "Lock Vault Now",
-                            subtitle = "Clear active session keys and return to lockscreen",
-                            onClick = { authViewModel.lock() },
-                            showChevron = false,
-                            iconTint = VaultColors.WarningAmber,
-                            textTint = VaultColors.WarningAmber
-                        )
-                        InsetDivider()
-                        SettingsValueRow(
-                            icon = Icons.Outlined.DeleteForever,
-                            label = "Reset & Destroy Vault",
-                            subtitle = "Permanently wipe all encrypted files and master keys",
-                            onClick = { showWipeVaultDialog = true },
-                            showChevron = false,
-                            iconTint = VaultColors.ErrorRed,
-                            textTint = VaultColors.ErrorRed
-                        )
+            // ══════════════════════════════════════════════
+            //  SECTION 3: Danger Zone
+            // ══════════════════════════════════════════════
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SectionHeader(stringResource(R.string.settings_section_danger))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = VaultColors.Surface),
+                        shape = RoundedCornerShape(22.dp),
+                        border = BorderStroke(1.dp, VaultColors.Hairline)
+                    ) {
+                        Column {
+                            SettingsValueRow(
+                                icon = Icons.Outlined.Lock,
+                                label = stringResource(R.string.settings_lock_vault_title),
+                                subtitle = stringResource(R.string.settings_lock_vault_desc),
+                                onClick = { authViewModel.lock() },
+                                showChevron = false,
+                                iconTint = VaultColors.WarningAmber,
+                                textTint = VaultColors.WarningAmber
+                            )
+                            InsetDivider()
+                            SettingsValueRow(
+                                icon = Icons.Outlined.DeleteForever,
+                                label = stringResource(R.string.settings_destroy_vault_title),
+                                subtitle = stringResource(R.string.settings_destroy_vault_desc),
+                                onClick = { showWipeVaultDialog = true },
+                                showChevron = false,
+                                iconTint = VaultColors.ErrorRed,
+                                textTint = VaultColors.ErrorRed
+                            )
+                        }
                     }
                 }
             }
@@ -331,6 +402,108 @@ fun SettingsScreen(
                 }
             },
             errorMessage = errorMessage
+        )
+    }
+
+    if (showLanguageDialog) {
+        val currentLang = AppLanguage.current()
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = VaultColors.SurfaceRaised,
+            titleContentColor = VaultColors.TextPrimary,
+            textContentColor = VaultColors.TextSecondary,
+            title = { Text(stringResource(R.string.settings_language_title), style = VaultType.SectionTitle) },
+            text = {
+                Column {
+                    AppLanguage.entries.forEach { lang ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showLanguageDialog = false
+                                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(lang.tag))
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = lang == currentLang,
+                                onClick = {
+                                    showLanguageDialog = false
+                                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(lang.tag))
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = VaultColors.Accent,
+                                    unselectedColor = VaultColors.TextSecondary
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(lang.labelRes), color = VaultColors.TextPrimary, style = VaultType.ItemTitle)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(stringResource(R.string.dialog_close), color = VaultColors.Accent, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    if (showAutoLockDelayDialog) {
+        val options = listOf(
+            0L to stringResource(R.string.settings_autolock_delay_0s),
+            30000L to stringResource(R.string.settings_autolock_delay_30s),
+            60000L to stringResource(R.string.settings_autolock_delay_1m),
+            180000L to stringResource(R.string.settings_autolock_delay_3m),
+            300000L to stringResource(R.string.settings_autolock_delay_5m)
+        )
+        AlertDialog(
+            onDismissRequest = { showAutoLockDelayDialog = false },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = VaultColors.SurfaceRaised,
+            titleContentColor = VaultColors.TextPrimary,
+            textContentColor = VaultColors.TextSecondary,
+            title = { Text(stringResource(R.string.settings_autolock_delay_title), style = VaultType.SectionTitle) },
+            text = {
+                Column {
+                    options.forEach { (millis, label) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    autoLockDelayMillis = millis
+                                    vaultConfig.autoLockDelayMillis = millis
+                                    showAutoLockDelayDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = millis == autoLockDelayMillis,
+                                onClick = {
+                                    autoLockDelayMillis = millis
+                                    vaultConfig.autoLockDelayMillis = millis
+                                    showAutoLockDelayDialog = false
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = VaultColors.Accent,
+                                    unselectedColor = VaultColors.TextSecondary
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(label, color = VaultColors.TextPrimary, style = VaultType.ItemTitle)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAutoLockDelayDialog = false }) {
+                    Text(stringResource(R.string.dialog_close), color = VaultColors.Accent, fontWeight = FontWeight.Bold)
+                }
+            }
         )
     }
 
@@ -356,10 +529,10 @@ fun SettingsScreen(
                     )
                 }
             },
-            title = { Text("Clear Decrypted Cache?", style = VaultType.SectionTitle) },
+            title = { Text(stringResource(R.string.dialog_clear_cache_title), style = VaultType.SectionTitle) },
             text = {
                 Text(
-                    "This removes all temporarily decrypted preview files from device cache. Your encrypted vault items remain untouched.",
+                    stringResource(R.string.dialog_clear_cache_desc),
                     style = VaultType.Meta,
                     color = VaultColors.TextSecondary
                 )
@@ -371,12 +544,12 @@ fun SettingsScreen(
                         showClearCacheDialog = false
                     }
                 ) {
-                    Text("Clear Cache", color = VaultColors.WarningAmber, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.dialog_clear_cache_btn), color = VaultColors.WarningAmber, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearCacheDialog = false }) {
-                    Text("Cancel", color = VaultColors.TextSecondary)
+                    Text(stringResource(R.string.dialog_cancel), color = VaultColors.TextSecondary)
                 }
             }
         )
@@ -412,10 +585,10 @@ fun SettingsScreen(
                     )
                 }
             },
-            title = { Text("Destroy Vault?", style = VaultType.SectionTitle) },
+            title = { Text(stringResource(R.string.dialog_destroy_title), style = VaultType.SectionTitle) },
             text = {
                 Text(
-                    "WARNING: This permanently destroys ALL encrypted files, Master Keys, biometric credentials, and database records. This cannot be undone.",
+                    stringResource(R.string.dialog_destroy_desc),
                     style = VaultType.Meta,
                     color = VaultColors.TextPrimary
                 )
@@ -429,7 +602,7 @@ fun SettingsScreen(
                     enabled = countdown == 0
                 ) {
                     Text(
-                        text = if (countdown > 0) "Destroy Vault (${countdown}s)" else "Destroy Vault",
+                        text = if (countdown > 0) stringResource(R.string.dialog_destroy_btn_timer, countdown) else stringResource(R.string.dialog_destroy_btn),
                         color = if (countdown > 0) VaultColors.TextSecondary else VaultColors.ErrorRed,
                         fontWeight = FontWeight.Bold
                     )
@@ -437,7 +610,7 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showWipeVaultDialog = false }) {
-                    Text("Cancel", color = VaultColors.TextSecondary)
+                    Text(stringResource(R.string.dialog_cancel), color = VaultColors.TextSecondary)
                 }
             }
         )
@@ -648,7 +821,7 @@ private fun ChangeKeyDialog(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Change $label", style = VaultType.SectionTitle)
+                Text(stringResource(R.string.settings_change_key_title, label), style = VaultType.SectionTitle)
                 IconButton(
                     onClick = { showKeys = !showKeys },
                     modifier = Modifier.size(28.dp)
@@ -667,7 +840,7 @@ private fun ChangeKeyDialog(
                 OutlinedTextField(
                     value = currentKey,
                     onValueChange = { currentKey = it; localError = null },
-                    label = { Text("Current $label", color = VaultColors.TextSecondary) },
+                    label = { Text(stringResource(R.string.settings_change_key_current, label), color = VaultColors.TextSecondary) },
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
                     visualTransformation = visualTransformation,
@@ -678,7 +851,7 @@ private fun ChangeKeyDialog(
                 OutlinedTextField(
                     value = newKey,
                     onValueChange = { newKey = it; localError = null },
-                    label = { Text("New $label", color = VaultColors.TextSecondary) },
+                    label = { Text(stringResource(R.string.settings_change_key_new, label), color = VaultColors.TextSecondary) },
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
                     visualTransformation = visualTransformation,
@@ -689,7 +862,7 @@ private fun ChangeKeyDialog(
                 OutlinedTextField(
                     value = confirmNewKey,
                     onValueChange = { confirmNewKey = it; localError = null },
-                    label = { Text("Confirm New $label", color = VaultColors.TextSecondary) },
+                    label = { Text(stringResource(R.string.settings_change_key_confirm, label), color = VaultColors.TextSecondary) },
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
                     visualTransformation = visualTransformation,
@@ -721,12 +894,12 @@ private fun ChangeKeyDialog(
                     }
                 }
             ) {
-                Text("Update $label", color = VaultColors.Accent, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_change_key_title, label), color = VaultColors.Accent, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = VaultColors.TextSecondary)
+                Text(stringResource(R.string.dialog_cancel), color = VaultColors.TextSecondary)
             }
         }
     )

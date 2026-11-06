@@ -129,6 +129,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
@@ -145,6 +146,7 @@ import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
 import com.ciphervault.app.viewmodel.SortOption
 import com.ciphervault.app.viewmodel.VaultViewModel
+import com.ciphervault.app.R
 import java.security.SecureRandom
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -356,12 +358,12 @@ fun VaultScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Your files are",
+                                text = stringResource(R.string.vault_files_are),
                                 style = VaultType.PageTitle,
                                 color = VaultColors.TextPrimary
                             )
                             Text(
-                                text = "securely vaulted.",
+                                text = stringResource(R.string.vault_securely_vaulted),
                                 style = VaultType.PageTitle.copy(fontStyle = FontStyle.Italic),
                                 color = VaultColors.Accent
                             )
@@ -384,14 +386,19 @@ fun VaultScreen(
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Text(
-                                        text = "${files.size} ${if (files.size == 1) "item" else "items"} • ${formatFileSize(totalVaultBytes)}",
+                                        text = stringResource(
+                                            R.string.vault_item_count,
+                                            files.size,
+                                            if (files.size == 1) stringResource(R.string.vault_item) else stringResource(R.string.vault_items),
+                                            formatFileSize(totalVaultBytes)
+                                        ),
                                         style = VaultType.Meta,
                                         color = VaultColors.TextPrimary,
                                         fontWeight = FontWeight.Medium
                                     )
                                     Icon(
                                         imageVector = Icons.Outlined.PieChart,
-                                        contentDescription = "Toggle storage breakdown",
+                                        contentDescription = stringResource(R.string.vault_toggle_storage),
                                         tint = if (showStorageInsights) VaultColors.Accent else VaultColors.TextSecondary,
                                         modifier = Modifier.size(14.dp)
                                     )
@@ -407,14 +414,14 @@ fun VaultScreen(
                                     .background(VaultColors.Accent)
                                     .clickable(
                                         role = Role.Button,
-                                        onClickLabel = "Add to vault",
+                                        onClickLabel = stringResource(R.string.vault_add),
                                         onClick = { showAddMenu = true }
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Add,
-                                    contentDescription = "Add to vault",
+                                    contentDescription = stringResource(R.string.vault_add),
                                     tint = Color.Black,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -426,7 +433,7 @@ fun VaultScreen(
                             ) {
                                 if (onNavigateToEncrypt != null) {
                                     DropdownMenuItem(
-                                        text = { Text("Encrypt files", color = VaultColors.TextPrimary) },
+                                        text = { Text(stringResource(R.string.action_encrypt_files), color = VaultColors.TextPrimary) },
                                         leadingIcon = {
                                             Icon(Icons.Outlined.Lock, null, tint = VaultColors.Accent, modifier = Modifier.size(20.dp))
                                         },
@@ -437,7 +444,7 @@ fun VaultScreen(
                                     )
                                 }
                                 DropdownMenuItem(
-                                    text = { Text("New secure note", color = VaultColors.TextPrimary) },
+                                    text = { Text(stringResource(R.string.action_new_secure_note), color = VaultColors.TextPrimary) },
                                     leadingIcon = {
                                         Icon(Icons.AutoMirrored.Outlined.NoteAdd, null, tint = ColorNote, modifier = Modifier.size(20.dp))
                                     },
@@ -448,7 +455,7 @@ fun VaultScreen(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Password generator", color = VaultColors.TextPrimary) },
+                                    text = { Text(stringResource(R.string.action_password_generator), color = VaultColors.TextPrimary) },
                                     leadingIcon = {
                                         Icon(Icons.Outlined.Key, null, tint = ColorImage, modifier = Modifier.size(20.dp))
                                     },
@@ -491,7 +498,7 @@ fun VaultScreen(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Search names, #tags, types...", color = VaultColors.TextSecondary) },
+                    placeholder = { Text(stringResource(R.string.search_hint_vault), color = VaultColors.TextSecondary) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Outlined.Search,
@@ -504,7 +511,7 @@ fun VaultScreen(
                             IconButton(onClick = { searchQuery = "" }) {
                                 Icon(
                                     imageVector = Icons.Outlined.Clear,
-                                    contentDescription = "Clear search",
+                                    contentDescription = stringResource(R.string.vault_clear_search),
                                     tint = VaultColors.TextSecondary
                                 )
                             }
@@ -526,7 +533,7 @@ fun VaultScreen(
                 Box {
                     ToolButton(
                         icon = Icons.AutoMirrored.Outlined.Sort,
-                        contentDescription = "Sort files",
+                        contentDescription = stringResource(R.string.vault_sort),
                         onClick = { showSortMenu = true }
                     )
                     DropdownMenu(
@@ -538,7 +545,7 @@ fun VaultScreen(
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = option.label,
+                                        text = sortOptionLabel(option),
                                         color = if (currentSort == option) VaultColors.Accent else VaultColors.TextPrimary,
                                         fontWeight = if (currentSort == option) FontWeight.Bold else FontWeight.Normal
                                     )
@@ -557,7 +564,7 @@ fun VaultScreen(
 
                 ToolButton(
                     icon = if (isGridView) Icons.AutoMirrored.Outlined.ViewList else Icons.Outlined.GridView,
-                    contentDescription = if (isGridView) "Switch to list view" else "Switch to grid view",
+                    contentDescription = if (isGridView) stringResource(R.string.vault_switch_list) else stringResource(R.string.vault_switch_grid),
                     onClick = { isGridView = !isGridView }
                 )
             }
@@ -640,67 +647,72 @@ fun VaultScreen(
 
             var localHighlightedFileId by remember { mutableStateOf<Long?>(null) }
 
-        // ---- Content ----
-        LaunchedEffect(highlightedFileId) {
-            if (highlightedFileId != null) {
-                searchQuery = ""
-                selectedCategory = "All"
-                selectedTagFilter = null
-            }
-        }
-
-        LaunchedEffect(highlightedFileId, filteredFiles) {
-            highlightedFileId?.let { id ->
-                val index = filteredFiles.indexOfFirst { it.id == id }
-                if (index != -1) {
-                    localHighlightedFileId = id
-                    if (isGridView) {
-                        gridState.animateScrollToItem(index)
-                    } else {
-                        listState.animateScrollToItem(index)
-                    }
+            // ---- Content ----
+            LaunchedEffect(highlightedFileId) {
+                if (highlightedFileId != null) {
+                    searchQuery = ""
+                    selectedCategory = "All"
+                    selectedTagFilter = null
                 }
-                vaultViewModel.setHighlightedFile(null)
-                delay(1500)
-                localHighlightedFileId = null
             }
-        }
+
+            LaunchedEffect(highlightedFileId, filteredFiles) {
+                highlightedFileId?.let { id ->
+                    val index = filteredFiles.indexOfFirst { it.id == id }
+                    if (index != -1) {
+                        localHighlightedFileId = id
+                        if (isGridView) {
+                            gridState.animateScrollToItem(index)
+                        } else {
+                            listState.animateScrollToItem(index)
+                        }
+                    }
+                    vaultViewModel.setHighlightedFile(null)
+                    delay(1500)
+                    localHighlightedFileId = null
+                }
+            }
             if (filteredFiles.isEmpty() && !isLoading) {
                 val vaultIsEmpty = files.isEmpty()
-                if (vaultIsEmpty) {
-                    EmptyState(
-                        icon = Icons.Outlined.Lock,
-                        title = "Your vault is empty",
-                        body = "Encrypt photos, documents, notes, or credentials and they'll be protected with hardware-backed AES-256-GCM.",
-                        actionLabel = if (onNavigateToEncrypt != null) "Encrypt files" else "Create secure note",
-                        onAction = {
-                            if (onNavigateToEncrypt != null) onNavigateToEncrypt()
-                            else showCreateNoteDialog = true
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    )
-                } else {
-                    EmptyState(
-                        icon = Icons.Outlined.Search,
-                        title = "No matching items",
-                        body = buildString {
-                            append("Nothing matches ")
-                            if (searchQuery.isNotBlank()) append("\"$searchQuery\" ")
-                            if (selectedCategory != "All") append("in $selectedCategory ")
-                            if (selectedTagFilter != null) append("tagged #$selectedTagFilter")
-                        }.trim() + ".",
-                        actionLabel = "Reset all filters",
-                        onAction = {
-                            searchQuery = ""
-                            selectedCategory = "All"
-                            selectedTagFilter = null
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (vaultIsEmpty) {
+                        EmptyState(
+                            icon = Icons.Outlined.Lock,
+                            title = stringResource(R.string.vault_empty_title),
+                            body = stringResource(R.string.vault_empty_body),
+                            actionLabel = if (onNavigateToEncrypt != null) stringResource(R.string.action_encrypt_files) else stringResource(R.string.vault_create_note),
+                            onAction = {
+                                if (onNavigateToEncrypt != null) onNavigateToEncrypt()
+                                else showCreateNoteDialog = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        val activeTagFilter = selectedTagFilter
+                        EmptyState(
+                            icon = Icons.Outlined.Search,
+                            title = stringResource(R.string.vault_no_matches_title),
+                            body = buildString {
+                                append(stringResource(R.string.vault_nothing_matches))
+                                if (searchQuery.isNotBlank()) append("\"$searchQuery\" ")
+                                if (selectedCategory != "All") append(stringResource(R.string.vault_in_category, categoryLabelOf(selectedCategory)))
+                                if (activeTagFilter != null) append(stringResource(R.string.vault_tagged, activeTagFilter))
+                            }.trim() + ".",
+                            actionLabel = stringResource(R.string.vault_reset_filters),
+                            onAction = {
+                                searchQuery = ""
+                                selectedCategory = "All"
+                                selectedTagFilter = null
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             } else if (isGridView) {
                 LazyVerticalGrid(
@@ -829,11 +841,11 @@ fun VaultScreen(
     fileToRename?.let { file ->
         VaultDialog(
             icon = Icons.Outlined.Edit,
-            title = "Rename item",
+            title = stringResource(R.string.vault_rename_title),
             subtitle = if (renameExtensionSuffix.isNotEmpty()) {
-                "Extension \"$renameExtensionSuffix\" will be preserved automatically."
+                stringResource(R.string.vault_rename_desc, renameExtensionSuffix)
             } else null,
-            confirmLabel = "Rename",
+            confirmLabel = stringResource(R.string.vault_rename_btn),
             confirmEnabled = newFileNameBase.isNotBlank(),
             onConfirm = {
                 val finalName = newFileNameBase.trim() + renameExtensionSuffix
@@ -845,7 +857,7 @@ fun VaultScreen(
             VaultTextField(
                 value = newFileNameBase,
                 onValueChange = { newFileNameBase = it },
-                label = "Name",
+                label = stringResource(R.string.vault_rename_label),
                 singleLine = true
             )
         }
@@ -874,8 +886,8 @@ fun VaultScreen(
         InteractiveTagDialog(
             initialTags = "",
             existingVaultTags = allUserTags,
-            title = "Tag ${selectedIds.size} selected items",
-            subtitle = "These tags will be added to all selected items.",
+            title = stringResource(R.string.vault_tag_multi_title, selectedIds.size),
+            subtitle = stringResource(R.string.vault_tag_multi_desc),
             onSave = { addedTags ->
                 val selectedFiles = files.filter { selectedIds.contains(it.id) }
                 selectedFiles.forEach { file ->
@@ -896,9 +908,9 @@ fun VaultScreen(
         VaultDialog(
             icon = Icons.Outlined.DeleteOutline,
             iconTint = VaultColors.ErrorRed,
-            title = "Delete from vault?",
-            subtitle = "\"${displayNameOf(file)}\" will be permanently shredded. Encrypted data cannot be recovered.",
-            confirmLabel = "Delete permanently",
+            title = stringResource(R.string.vault_delete_title),
+            subtitle = stringResource(R.string.vault_delete_subtitle, displayNameOf(file)),
+            confirmLabel = stringResource(R.string.vault_delete_btn),
             confirmColor = VaultColors.ErrorRed,
             confirmContentColor = Color.White,
             onConfirm = {
@@ -914,9 +926,9 @@ fun VaultScreen(
         VaultDialog(
             icon = Icons.Outlined.DeleteOutline,
             iconTint = VaultColors.ErrorRed,
-            title = "Delete ${selectedIds.size} items?",
-            subtitle = "All ${selectedIds.size} selected items will be permanently deleted from your vault. This action cannot be undone.",
-            confirmLabel = "Delete ${selectedIds.size} items",
+            title = stringResource(R.string.vault_delete_multi_title, selectedIds.size),
+            subtitle = stringResource(R.string.vault_delete_multi_desc, selectedIds.size),
+            confirmLabel = stringResource(R.string.vault_delete_multi_btn, selectedIds.size),
             confirmColor = VaultColors.ErrorRed,
             confirmContentColor = Color.White,
             onConfirm = {
@@ -936,9 +948,9 @@ fun VaultScreen(
         VaultDialog(
             icon = Icons.AutoMirrored.Outlined.NoteAdd,
             iconTint = ColorNote,
-            title = "New secure note",
-            subtitle = "Encrypted with AES-256-GCM before touching disk.",
-            confirmLabel = "Save note",
+            title = stringResource(R.string.action_new_secure_note),
+            subtitle = stringResource(R.string.vault_note_subtitle),
+            confirmLabel = stringResource(R.string.vault_note_save),
             confirmEnabled = noteTitle.isNotBlank() && noteContent.isNotBlank(),
             onConfirm = {
                 vaultViewModel.createSecureNote(context, noteTitle.trim(), noteContent)
@@ -953,7 +965,7 @@ fun VaultScreen(
             VaultTextField(
                 value = noteTitle,
                 onValueChange = { noteTitle = it },
-                label = "Title",
+                label = stringResource(R.string.vault_note_title_label),
                 leadingIcon = Icons.Outlined.Title,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -964,7 +976,7 @@ fun VaultScreen(
             VaultTextField(
                 value = noteContent,
                 onValueChange = { noteContent = it },
-                label = "Private note content",
+                label = stringResource(R.string.vault_note_content),
                 minLines = 5,
                 maxLines = 8,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
@@ -974,7 +986,7 @@ fun VaultScreen(
                 horizontalArrangement = Arrangement.End
             ) {
                 Text(
-                    text = "${noteContent.length} chars",
+                    text = stringResource(R.string.format_length_characters, noteContent.length),
                     style = VaultType.Meta,
                     color = VaultColors.TextSecondary
                 )
@@ -1011,8 +1023,8 @@ fun VaultScreen(
             icon = Icons.Outlined.Description,
             iconTint = ColorNote,
             title = title.removeSuffix(".note.txt"),
-            confirmLabel = "Done",
-            dismissLabel = if (copied) "Copied!" else "Copy all text",
+            confirmLabel = stringResource(R.string.vault_done),
+            dismissLabel = if (copied) stringResource(R.string.vault_copied) else stringResource(R.string.vault_copy_all),
             onConfirm = { vaultViewModel.clearViewingNote() },
             onDismiss = {
                 copyToClipboard(context, "Secure Note", content)
@@ -1076,10 +1088,10 @@ private fun SelectionTopBar(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClearSelection) {
-                Icon(Icons.Outlined.Close, contentDescription = "Cancel selection", tint = VaultColors.TextPrimary)
+                Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.vault_cancel_selection), tint = VaultColors.TextPrimary)
             }
             Text(
-                text = "$selectedCount selected",
+                text = stringResource(R.string.vault_selected_count, selectedCount),
                 style = VaultType.ItemTitle,
                 color = VaultColors.Accent
             )
@@ -1089,21 +1101,21 @@ private fun SelectionTopBar(
             IconButton(onClick = onSelectAll) {
                 Icon(
                     imageVector = Icons.Outlined.SelectAll,
-                    contentDescription = if (selectedCount == totalVisibleCount) "Deselect all" else "Select all",
+                    contentDescription = if (selectedCount == totalVisibleCount) stringResource(R.string.vault_deselect_all) else stringResource(R.string.vault_select_all),
                     tint = if (selectedCount == totalVisibleCount) VaultColors.Accent else VaultColors.TextPrimary
                 )
             }
             IconButton(onClick = onBatchTag) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.Label,
-                    contentDescription = "Tag selected",
+                    contentDescription = stringResource(R.string.vault_tag_selected),
                     tint = VaultColors.TextPrimary
                 )
             }
             IconButton(onClick = onBatchDelete) {
                 Icon(
                     imageVector = Icons.Outlined.DeleteOutline,
-                    contentDescription = "Delete selected",
+                    contentDescription = stringResource(R.string.vault_delete_selected),
                     tint = VaultColors.ErrorRed
                 )
             }
@@ -1144,7 +1156,7 @@ private fun VaultStorageBreakdownCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Encrypted Storage Breakdown",
+                text = stringResource(R.string.vault_storage_breakdown),
                 style = VaultType.Meta,
                 color = VaultColors.TextSecondary,
                 fontWeight = FontWeight.SemiBold
@@ -1203,7 +1215,7 @@ private fun VaultStorageBreakdownCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "$label (${formatFileSize(bytes)})",
+                        text = "${categoryLabelOf(label)} (${formatFileSize(bytes)})",
                         style = VaultType.Meta,
                         fontSize = 11.sp,
                         color = VaultColors.TextPrimary
@@ -1275,7 +1287,7 @@ private fun CategoryChip(
             )
         }
         Text(
-            text = label,
+            text = categoryLabelOf(label),
             style = VaultType.Meta,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = if (selected) Color.Black else VaultColors.TextSecondary
@@ -1419,7 +1431,7 @@ private fun VaultFileListRow(
                     if (pinned) {
                         Icon(
                             imageVector = Icons.Outlined.Star,
-                            contentDescription = "Pinned",
+                            contentDescription = stringResource(R.string.vault_pinned),
                             tint = ColorStar,
                             modifier = Modifier
                                 .size(15.dp)
@@ -1459,7 +1471,7 @@ private fun VaultFileListRow(
                 IconButton(onClick = onMore) {
                     Icon(
                         imageVector = Icons.Outlined.MoreVert,
-                        contentDescription = "More options for ${displayNameOf(file)}",
+                        contentDescription = stringResource(R.string.vault_more_options, displayNameOf(file)),
                         tint = VaultColors.TextSecondary
                     )
                 }
@@ -1555,7 +1567,7 @@ private fun VaultFileGridCard(
                     IconButton(onClick = onMore, modifier = Modifier.size(36.dp)) {
                         Icon(
                             imageVector = Icons.Outlined.MoreVert,
-                            contentDescription = "More options for ${displayNameOf(file)}",
+                            contentDescription = stringResource(R.string.vault_more_options, displayNameOf(file)),
                             tint = VaultColors.TextSecondary,
                             modifier = Modifier.size(20.dp)
                         )
@@ -1572,7 +1584,7 @@ private fun VaultFileGridCard(
                 if (pinned) {
                     Icon(
                         imageVector = Icons.Outlined.Star,
-                        contentDescription = "Pinned",
+                        contentDescription = stringResource(R.string.vault_pinned),
                         tint = ColorStar,
                         modifier = Modifier
                             .size(14.dp)
@@ -1690,7 +1702,7 @@ private fun FileDetailsContent(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${formatFileSize(file.originalSize)} • ${kindLabelOf(file) ?: (file.mimeType ?: "Binary data")}",
+                    text = "${formatFileSize(file.originalSize)} • ${kindLabelOf(file) ?: (file.mimeType ?: stringResource(R.string.vault_binary_data))}",
                     style = VaultType.Meta,
                     color = VaultColors.TextSecondary,
                     maxLines = 1,
@@ -1711,16 +1723,16 @@ private fun FileDetailsContent(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Cipher", style = VaultType.Meta, color = VaultColors.TextSecondary)
+                Text(stringResource(R.string.label_cipher), style = VaultType.Meta, color = VaultColors.TextSecondary)
                 Text(
-                    "AES-256-GCM (Hardware key)",
+                    stringResource(R.string.vault_cipher_hardware),
                     style = VaultType.Meta,
                     color = VaultColors.Accent,
                     fontWeight = FontWeight.SemiBold
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Encrypted on", style = VaultType.Meta, color = VaultColors.TextSecondary)
+                Text(stringResource(R.string.label_encrypted_on), style = VaultType.Meta, color = VaultColors.TextSecondary)
                 Text(formatDate(file.encryptedAt), style = VaultType.Meta, color = VaultColors.TextPrimary)
             }
             if (visibleTags.isNotEmpty()) {
@@ -1729,7 +1741,7 @@ private fun FileDetailsContent(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Tags", style = VaultType.Meta, color = VaultColors.TextSecondary)
+                    Text(stringResource(R.string.label_tags), style = VaultType.Meta, color = VaultColors.TextSecondary)
                     TagChips(tags = visibleTags, maxVisible = 3)
                 }
             }
@@ -1751,7 +1763,7 @@ private fun FileDetailsContent(
         ) {
             Icon(Icons.Outlined.LockOpen, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(10.dp))
-            Text("Open decrypted preview", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(stringResource(R.string.action_open_decrypted_preview), fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
 
         Spacer(modifier = Modifier.height(14.dp))
@@ -1762,28 +1774,28 @@ private fun FileDetailsContent(
             count = 4,
             icon = if (pinned) Icons.Outlined.Star else Icons.Outlined.StarBorder,
             iconTint = ColorStar,
-            label = if (pinned) "Remove from Starred" else "Add to Starred (Pin to top)",
+            label = if (pinned) stringResource(R.string.vault_remove_starred) else stringResource(R.string.vault_add_starred),
             onClick = onTogglePin
         )
         SheetAction(
             index = 1,
             count = 4,
             icon = Icons.Outlined.Download,
-            label = "Export decrypted copy",
+            label = stringResource(R.string.vault_export_copy),
             onClick = onExport
         )
         SheetAction(
             index = 2,
             count = 4,
             icon = Icons.AutoMirrored.Outlined.Label,
-            label = "Manage tags",
+            label = stringResource(R.string.vault_manage_tags),
             onClick = onEditTags
         )
         SheetAction(
             index = 3,
             count = 4,
             icon = Icons.Outlined.Edit,
-            label = "Rename",
+            label = stringResource(R.string.vault_rename_btn),
             onClick = onRename
         )
 
@@ -1794,7 +1806,7 @@ private fun FileDetailsContent(
             index = 0,
             count = 1,
             icon = Icons.Outlined.DeleteOutline,
-            label = "Delete from vault",
+            label = stringResource(R.string.vault_delete_from_vault),
             tint = VaultColors.ErrorRed,
             iconTint = VaultColors.ErrorRed,
             onClick = onDelete
@@ -1856,8 +1868,8 @@ private fun SheetAction(
 private fun InteractiveTagDialog(
     initialTags: String,
     existingVaultTags: List<String>,
-    title: String = "Manage tags",
-    subtitle: String = "Add or tap tags to organize this item.",
+    title: String = stringResource(R.string.vault_manage_tags),
+    subtitle: String = stringResource(R.string.vault_tag_subtitle),
     onSave: (List<String>) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -1878,7 +1890,7 @@ private fun InteractiveTagDialog(
         icon = Icons.AutoMirrored.Outlined.Label,
         title = title,
         subtitle = subtitle,
-        confirmLabel = "Save tags",
+        confirmLabel = stringResource(R.string.vault_tag_save),
         onConfirm = {
             commitPendingInput()
             onSave(currentTagList)
@@ -1902,7 +1914,7 @@ private fun InteractiveTagDialog(
                         tagInput = it
                     }
                 },
-                label = "New tag (e.g. tax, 2026)",
+                label = stringResource(R.string.vault_tag_new),
                 singleLine = true,
                 modifier = Modifier.weight(1f)
             )
@@ -1914,12 +1926,12 @@ private fun InteractiveTagDialog(
                     .clip(RoundedCornerShape(12.dp))
                     .background(VaultColors.Accent)
             ) {
-                Icon(Icons.Outlined.Add, contentDescription = "Add tag", tint = Color.Black)
+                Icon(Icons.Outlined.Add, contentDescription = stringResource(R.string.action_add_tag), tint = Color.Black)
             }
         }
 
         if (currentTagList.isNotEmpty()) {
-            Text("Assigned tags", style = VaultType.Meta, color = VaultColors.TextSecondary)
+            Text(stringResource(R.string.label_assigned_tags), style = VaultType.Meta, color = VaultColors.TextSecondary)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -1940,7 +1952,7 @@ private fun InteractiveTagDialog(
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Outlined.Close,
-                            contentDescription = "Remove $tag",
+                            contentDescription = stringResource(R.string.vault_remove_tag, tag),
                             tint = VaultColors.Accent,
                             modifier = Modifier.size(14.dp)
                         )
@@ -1953,7 +1965,7 @@ private fun InteractiveTagDialog(
             currentTagList.any { it.equals(existing, ignoreCase = true) }
         }
         if (suggestions.isNotEmpty()) {
-            Text("Quick add from vault", style = VaultType.Meta, color = VaultColors.TextSecondary)
+            Text(stringResource(R.string.action_quick_add_vault), style = VaultType.Meta, color = VaultColors.TextSecondary)
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -2013,10 +2025,10 @@ private fun PasswordGeneratorDialog(
     VaultDialog(
         icon = Icons.Outlined.Key,
         iconTint = ColorImage,
-        title = "Password generator",
-        subtitle = "Cryptographically random via SecureRandom.",
-        confirmLabel = "Save as note",
-        dismissLabel = "Close",
+        title = stringResource(R.string.action_password_generator),
+        subtitle = stringResource(R.string.vault_pwd_gen_sub),
+        confirmLabel = stringResource(R.string.vault_save_as_note),
+        dismissLabel = stringResource(R.string.dialog_close),
         onConfirm = { onSaveAsNote(generatedPassword) },
         onDismiss = onDismiss
     ) {
@@ -2040,7 +2052,7 @@ private fun PasswordGeneratorDialog(
                     modifier = Modifier.weight(1f)
                 )
                 IconButton(onClick = { regenerate() }) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = "Regenerate", tint = VaultColors.TextSecondary)
+                    Icon(Icons.Outlined.Refresh, contentDescription = stringResource(R.string.vault_regenerate), tint = VaultColors.TextSecondary)
                 }
                 IconButton(
                     onClick = {
@@ -2050,7 +2062,7 @@ private fun PasswordGeneratorDialog(
                 ) {
                     Icon(
                         imageVector = if (copied) Icons.Outlined.Check else Icons.Outlined.ContentCopy,
-                        contentDescription = "Copy password",
+                        contentDescription = stringResource(R.string.vault_copy_password),
                         tint = if (copied) VaultColors.Accent else VaultColors.TextPrimary
                     )
                 }
@@ -2062,8 +2074,8 @@ private fun PasswordGeneratorDialog(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Length: ${length.toInt()} characters", style = VaultType.Meta, color = VaultColors.TextPrimary)
-            val (strengthLabel, strengthColor) = passwordStrengthOf(generatedPassword)
+            Text(stringResource(R.string.format_length_characters, length.toInt()), style = VaultType.Meta, color = VaultColors.TextPrimary)
+            val (strengthLabel, strengthColor) = passwordStrengthLabel(generatedPassword)
             Text(strengthLabel, style = VaultType.Meta, color = strengthColor, fontWeight = FontWeight.Bold)
         }
 
@@ -2086,7 +2098,7 @@ private fun PasswordGeneratorDialog(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            GeneratorToggleChip("A-Z", useUpper, Modifier.weight(1f)) {
+            GeneratorToggleChip(stringResource(R.string.vault_pwd_az), useUpper, Modifier.weight(1f)) {
                 useUpper = !useUpper
                 regenerate()
             }
@@ -2146,12 +2158,12 @@ private fun CredentialViewDialog(
         }
     }
 
-    val (strengthLabel, strengthColor) = remember(password) { passwordStrengthOf(password) }
+    val (strengthLabel, strengthColor) = passwordStrengthLabel(password)
 
     VaultDialog(
         icon = Icons.Outlined.Key,
         title = title,
-        confirmLabel = "Close",
+        confirmLabel = stringResource(R.string.dialog_close),
         dismissLabel = null,
         onConfirm = onClose,
         onDismiss = onClose
@@ -2168,10 +2180,10 @@ private fun CredentialViewDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Username or email", color = VaultColors.TextSecondary, style = VaultType.Chip)
+                    Text(stringResource(R.string.label_username_or_email), color = VaultColors.TextSecondary, style = VaultType.Chip)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = username.ifEmpty { "Not set" },
+                        text = username.ifEmpty { stringResource(R.string.vault_not_set) },
                         color = if (username.isEmpty()) VaultColors.TextSecondary else VaultColors.TextPrimary,
                         style = VaultType.ItemTitle
                     )
@@ -2185,7 +2197,7 @@ private fun CredentialViewDialog(
                     ) {
                         Icon(
                             imageVector = if (copiedField == "user") Icons.Outlined.Check else Icons.Outlined.ContentCopy,
-                            contentDescription = "Copy username",
+                            contentDescription = stringResource(R.string.vault_copy_username),
                             tint = if (copiedField == "user") VaultColors.Accent else VaultColors.TextSecondary
                         )
                     }
@@ -2209,7 +2221,7 @@ private fun CredentialViewDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Password", color = VaultColors.TextSecondary, style = VaultType.Chip)
+                        Text(stringResource(R.string.filter_password), color = VaultColors.TextSecondary, style = VaultType.Chip)
                         if (password.isNotEmpty()) {
                             Text(
                                 text = strengthLabel,
@@ -2230,7 +2242,7 @@ private fun CredentialViewDialog(
                 IconButton(onClick = { reveal = !reveal }) {
                     Icon(
                         imageVector = if (reveal) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                        contentDescription = if (reveal) "Hide password" else "Show password",
+                        contentDescription = if (reveal) stringResource(R.string.lock_hide_password) else stringResource(R.string.lock_show_password),
                         tint = VaultColors.TextSecondary
                     )
                 }
@@ -2243,7 +2255,7 @@ private fun CredentialViewDialog(
                     ) {
                         Icon(
                             imageVector = if (copiedField == "pass") Icons.Outlined.Check else Icons.Outlined.ContentCopy,
-                            contentDescription = "Copy password",
+                            contentDescription = stringResource(R.string.vault_copy_password),
                             tint = if (copiedField == "pass") VaultColors.Accent else VaultColors.TextSecondary
                         )
                     }
@@ -2265,7 +2277,7 @@ private fun VaultDialog(
     confirmEnabled: Boolean = true,
     confirmColor: Color = VaultColors.Accent,
     confirmContentColor: Color = Color.Black,
-    dismissLabel: String? = "Cancel",
+    dismissLabel: String? = stringResource(R.string.dialog_cancel),
     content: @Composable () -> Unit
 ) {
     AlertDialog(
@@ -2447,10 +2459,49 @@ private fun splitFileNameAndExtension(fullName: String): Pair<String, String> {
     }
 }
 
+@Composable
 private fun kindLabelOf(file: EncryptedFileEntity): String? = when {
-    isNote(file) -> "Secure note"
-    isCredential(file) -> "Credential"
+    isNote(file) -> stringResource(R.string.vault_type_secure_note)
+    isCredential(file) -> stringResource(R.string.vault_type_credential)
     else -> null
+}
+
+@Composable
+private fun categoryLabelOf(category: String): String {
+    return when (category) {
+        "All" -> stringResource(R.string.vault_cat_all)
+        "Starred" -> stringResource(R.string.vault_cat_starred)
+        "Notes & Keys" -> stringResource(R.string.vault_cat_notes)
+        "Images" -> stringResource(R.string.vault_cat_images)
+        "Documents" -> stringResource(R.string.vault_cat_documents)
+        "Videos" -> stringResource(R.string.vault_cat_videos)
+        "Audio" -> stringResource(R.string.vault_cat_audio)
+        "Other" -> stringResource(R.string.vault_cat_other)
+        else -> category
+    }
+}
+
+@Composable
+private fun sortOptionLabel(option: SortOption): String {
+    return when (option) {
+        SortOption.DATE_DESC -> stringResource(R.string.sort_newest)
+        SortOption.DATE_ASC -> stringResource(R.string.sort_oldest)
+        SortOption.NAME_ASC -> stringResource(R.string.sort_name_asc)
+        SortOption.NAME_DESC -> stringResource(R.string.sort_name_desc)
+        SortOption.SIZE_DESC -> stringResource(R.string.sort_size_desc)
+        SortOption.SIZE_ASC -> stringResource(R.string.sort_size_asc)
+    }
+}
+
+@Composable
+private fun passwordStrengthLabel(password: String): Pair<String, Color> {
+    val (key, color) = remember(password) { passwordStrengthOf(password) }
+    val label = when (key) {
+        "Strong" -> stringResource(R.string.setup_strong)
+        "Moderate" -> stringResource(R.string.setup_fair)
+        else -> stringResource(R.string.setup_weak)
+    }
+    return label to color
 }
 
 private fun matchesCategory(file: EncryptedFileEntity, category: String): Boolean {

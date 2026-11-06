@@ -64,6 +64,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -78,6 +79,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.ciphervault.app.CipherVaultApp
+import com.ciphervault.app.R
 import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
 import com.ciphervault.app.viewmodel.VaultViewModel
@@ -216,7 +218,7 @@ fun ImagePreviewScreen(
                 setDataAndType(uri, file?.mimeType ?: "*/*")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "Open with"))
+            context.startActivity(Intent.createChooser(intent, context.getString(R.string.preview_open_with)))
             vaultViewModel.clearDecryptedUri()
         }
     }
@@ -324,7 +326,7 @@ fun ImagePreviewScreen(
                 CircularProgressIndicator(color = VaultColors.Accent)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Decrypting your image...",
+                    text = stringResource(R.string.preview_decrypting_image),
                     style = VaultType.Meta,
                     color = Color.White.copy(alpha = 0.8f)
                 )
@@ -344,14 +346,14 @@ fun ImagePreviewScreen(
                 )
                 Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = "Couldn't open this image",
+                    text = stringResource(R.string.preview_couldnt_open_image),
                     style = VaultType.ItemTitle,
                     color = Color.White,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "It may be damaged or in a format that isn't supported here. Try another app.",
+                    text = stringResource(R.string.preview_image_damaged),
                     style = VaultType.Meta,
                     color = Color.White.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
@@ -365,7 +367,7 @@ fun ImagePreviewScreen(
                         contentColor = Color.Black
                     )
                 ) {
-                    Text("Open in another app", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.preview_open_in_another), fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -392,12 +394,12 @@ fun ImagePreviewScreen(
                         .size(44.dp)
                         .clip(CircleShape)
                         .background(Color.Black.copy(alpha = 0.35f))
-                        .clickable(role = Role.Button, onClickLabel = "Go back", onClick = onBack),
+                        .clickable(role = Role.Button, onClickLabel = stringResource(R.string.preview_go_back), onClick = onBack),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.preview_back),
                         tint = Color.White,
                         modifier = Modifier.size(22.dp)
                     )
@@ -405,7 +407,7 @@ fun ImagePreviewScreen(
                 Spacer(modifier = Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = file?.originalFileName ?: "Image preview",
+                        text = file?.originalFileName ?: stringResource(R.string.preview_image_preview),
                         style = VaultType.ItemTitle.copy(fontSize = 16.sp),
                         color = Color.White,
                         maxLines = 1,
@@ -426,7 +428,7 @@ fun ImagePreviewScreen(
                 IconButton(onClick = { file?.let { vaultViewModel.decryptFile(it) } }) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
-                        contentDescription = "Open in another app",
+                        contentDescription = stringResource(R.string.preview_open_in_another),
                         tint = VaultColors.Accent
                     )
                 }
@@ -454,14 +456,14 @@ fun ImagePreviewScreen(
                 IconButton(onClick = { rotateBy(-1) }) {
                     Icon(
                         imageVector = Icons.Outlined.RotateLeft,
-                        contentDescription = "Rotate left",
+                        contentDescription = stringResource(R.string.preview_rotate_left),
                         tint = Color.White
                     )
                 }
                 IconButton(onClick = { rotateBy(1) }) {
                     Icon(
                         imageVector = Icons.Outlined.RotateRight,
-                        contentDescription = "Rotate right",
+                        contentDescription = stringResource(R.string.preview_rotate_right),
                         tint = Color.White
                     )
                 }
@@ -476,7 +478,7 @@ fun ImagePreviewScreen(
 
                 val zoomed = scale > 1.02f
                 Text(
-                    text = if (zoomed) "%.1fx".format(scale) else "Fit",
+                    text = if (zoomed) stringResource(R.string.preview_zoom_factor, scale) else stringResource(R.string.preview_fit),
                     style = VaultType.Meta,
                     fontWeight = FontWeight.Bold,
                     color = if (zoomed) VaultColors.Accent else Color.White,
@@ -486,7 +488,7 @@ fun ImagePreviewScreen(
                         .clip(CircleShape)
                         .clickable(
                             role = Role.Button,
-                            onClickLabel = if (zoomed) "Fit to screen" else "Zoom in"
+                            onClickLabel = if (zoomed) stringResource(R.string.preview_fit_to_screen) else stringResource(R.string.preview_zoom_in)
                         ) {
                             if (zoomed) animateZoomTo(1f, null) else animateZoomTo(DoubleTapZoom, null)
                         }

@@ -166,7 +166,7 @@ class TotpManager(private val context: Context, private val cryptoManager: Crypt
         private const val KEY_LAST_COUNTER = "last_counter"
         private const val MAX_FAILED_ATTEMPTS = 5
         private const val LOCKOUT_DURATION_MS = 30_000L
-        private const val ISSUER = "KeyZone"
+        private const val ISSUER = "Key Zone"
     }
 }
 

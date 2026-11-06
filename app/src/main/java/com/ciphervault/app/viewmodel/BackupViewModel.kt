@@ -9,6 +9,7 @@ import com.ciphervault.app.CipherVaultApp
 import com.ciphervault.app.backup.BackupStats
 import com.ciphervault.app.totp.QrCodeGenerator
 import com.ciphervault.app.totp.TotpVerifyResult
+import com.ciphervault.app.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -95,19 +96,19 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
 
                 // Generate recovery codes
                 _recoveryCodes.value = app.recoveryCodeManager.generateCodes()
-                _message.value = "2FA verified successfully"
+                _message.value = app.getString(R.string.backup_msg_2fa_verified)
                 true
             }
             is TotpVerifyResult.Invalid -> {
-                _message.value = "Invalid code. ${result.attemptsRemaining} attempts remaining."
+                _message.value = app.getString(R.string.backup_msg_invalid_code, result.attemptsRemaining)
                 false
             }
             is TotpVerifyResult.LockedOut -> {
-                _message.value = "Too many attempts. Wait ${result.secondsRemaining}s."
+                _message.value = app.getString(R.string.backup_msg_too_many_attempts, result.secondsRemaining)
                 false
             }
             is TotpVerifyResult.ReplayDetected -> {
-                _message.value = "Code already used. Wait for the next code."
+                _message.value = app.getString(R.string.backup_msg_code_used)
                 false
             }
         }
@@ -126,7 +127,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         _qrBitmap.value = null
         _otpAuthUri.value = null
         _recoveryCodes.value = emptyList()
-        _message.value = "Authenticator disabled"
+        _message.value = app.getString(R.string.backup_msg_authenticator_disabled)
     }
 
     // ═══════════════════════════════════════
@@ -145,10 +146,10 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
 
                 val uri = app.backupManager.createBackup(masterKey)
                 _backupUri.value = uri
-                _message.value = "Backup ready for sharing"
+                _message.value = app.getString(R.string.backup_msg_ready_share)
                 loadBackupStats()
             } catch (e: Exception) {
-                _message.value = "Backup failed: ${e.message}"
+                _message.value = app.getString(R.string.backup_msg_backup_failed, e.message ?: "Unknown error")
             }
             _isLoading.value = false
         }
@@ -166,14 +167,14 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
 
                 app.backupManager.exportBackupToUri(destinationUri, masterKey)
                     .onSuccess {
-                        _message.value = "Backup saved to phone storage successfully!"
+                        _message.value = app.getString(R.string.backup_msg_saved_phone)
                         loadBackupStats()
                     }
                     .onFailure {
-                        _message.value = "Failed to save: ${it.message}"
+                        _message.value = app.getString(R.string.backup_msg_failed_save, it.message ?: "Unknown error")
                     }
             } catch (e: Exception) {
-                _message.value = "Export failed: ${e.message}"
+                _message.value = app.getString(R.string.backup_msg_export_failed, e.message ?: "Unknown error")
             }
             _isLoading.value = false
         }

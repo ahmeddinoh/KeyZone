@@ -77,6 +77,11 @@ class VaultConfig(context: Context) {
         get() = prefs.getBoolean(KEY_SCREEN_PROTECTION, true)
         set(value) = prefs.edit().putBoolean(KEY_SCREEN_PROTECTION, value).apply()
 
+    /** Delay before auto-locking in background (in milliseconds). Default is 0. */
+    var autoLockDelayMillis: Long
+        get() = prefs.getLong(KEY_AUTO_LOCK_DELAY, 0L)
+        set(value) = prefs.edit().putLong(KEY_AUTO_LOCK_DELAY, value).apply()
+
     /** Whether original files are automatically deleted after encryption. */
     var deleteOriginalAfterEncryption: Boolean
         get() = prefs.getBoolean(KEY_DELETE_ORIGINAL, false)
@@ -107,7 +112,9 @@ class VaultConfig(context: Context) {
         private const val KEY_BIOMETRIC_WRAPPED_KEY = "biometric_wrapped_key"
         private const val KEY_BIOMETRIC_IV = "biometric_iv"
         private const val KEY_AUTO_LOCK = "auto_lock_background"
+        private const val KEY_AUTO_LOCK_DELAY = "auto_lock_delay"
         private const val KEY_SCREEN_PROTECTION = "screen_protection"
         private const val KEY_DELETE_ORIGINAL = "delete_original"
     }
 }
+

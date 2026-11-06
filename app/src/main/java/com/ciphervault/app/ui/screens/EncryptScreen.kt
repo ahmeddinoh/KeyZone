@@ -100,6 +100,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -112,6 +113,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ciphervault.app.R
 import com.ciphervault.app.CipherVaultApp
 import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
@@ -155,7 +157,7 @@ fun EncryptScreen(vaultViewModel: VaultViewModel) {
 
     fun processSelectedUri(uri: Uri) {
         if (selectedFiles.any { it.uri == uri }) return
-        var fileName = "Unknown file"
+        var fileName = context.getString(R.string.encrypt_unknown_file)
         var fileSize = 0L
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
@@ -243,7 +245,7 @@ fun EncryptScreen(vaultViewModel: VaultViewModel) {
                 // ---- Empty state: create directly ----
                 item(key = "create-label") {
                     Text(
-                        text = "Or create something directly",
+                        text = stringResource(R.string.encrypt_create_directly),
                         style = VaultType.Meta,
                         color = VaultColors.TextSecondary,
                         modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)
@@ -254,8 +256,8 @@ fun EncryptScreen(vaultViewModel: VaultViewModel) {
                         index = 0,
                         count = 2,
                         icon = Icons.AutoMirrored.Outlined.NoteAdd,
-                        title = "Secure note",
-                        subtitle = "Write something private",
+                        title = stringResource(R.string.vault_note_title),
+                        subtitle = stringResource(R.string.encrypt_write_private),
                         onClick = { showCreateNoteDialog = true }
                     )
                 }
@@ -264,8 +266,8 @@ fun EncryptScreen(vaultViewModel: VaultViewModel) {
                         index = 1,
                         count = 2,
                         icon = Icons.Outlined.Key,
-                        title = "Credential",
-                        subtitle = "Save a username and password",
+                        title = stringResource(R.string.encrypt_credential_title),
+                        subtitle = stringResource(R.string.encrypt_save_credential),
                         onClick = { showCreateCredentialDialog = true }
                     )
                 }
@@ -297,7 +299,7 @@ fun EncryptScreen(vaultViewModel: VaultViewModel) {
                     items = selectedFiles,
                     key = { _, file -> file.uri.toString() }
                 ) { index, file ->
-                    val kind = fileKindOf(file)
+                    val kind = fileKindOf(file, context)
                     GroupedRow(
                         index = index,
                         count = selectedFiles.size,
@@ -317,7 +319,7 @@ fun EncryptScreen(vaultViewModel: VaultViewModel) {
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
-                                    contentDescription = "Remove ${file.name}",
+                                    contentDescription = stringResource(R.string.encrypt_remove_desc, file.name),
                                     tint = VaultColors.TextSecondary,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -400,18 +402,18 @@ fun EncryptScreen(vaultViewModel: VaultViewModel) {
 private fun ScreenHeader(modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = "Lock your files",
+            text = stringResource(R.string.encrypt_lock_files),
             style = VaultType.PageTitle,
             color = VaultColors.TextPrimary
         )
         Text(
-            text = "in the vault.",
+            text = stringResource(R.string.encrypt_in_vault),
             style = VaultType.PageTitle.copy(fontStyle = FontStyle.Italic),
             color = VaultColors.Accent
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "Choose what to protect. You can have the originals removed once they're encrypted.",
+            text = stringResource(R.string.encrypt_choose_protect),
             style = VaultType.Meta,
             color = VaultColors.TextSecondary
         )
@@ -436,7 +438,7 @@ private fun DropZone(
             .clickable(
                 enabled = enabled,
                 role = Role.Button,
-                onClickLabel = "Choose files to encrypt",
+                onClickLabel = stringResource(R.string.encrypt_action_choose_files),
                 onClick = onClick
             )
             .padding(horizontal = 24.dp, vertical = 40.dp),
@@ -451,14 +453,14 @@ private fun DropZone(
             )
             Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = "Select files to encrypt",
+                text = stringResource(R.string.select_files),
                 style = VaultType.ItemTitle,
                 color = VaultColors.TextPrimary,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Photos, documents, videos and archives all work.",
+                text = stringResource(R.string.encrypt_photos_docs_work),
                 style = VaultType.Meta,
                 color = VaultColors.TextSecondary,
                 textAlign = TextAlign.Center
@@ -479,7 +481,7 @@ private fun DropZone(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Browse files",
+                    text = stringResource(R.string.import_browse_files),
                     style = VaultType.ItemTitle.copy(fontSize = 14.sp),
                     color = Color.Black,
                     fontWeight = FontWeight.Bold
@@ -533,7 +535,7 @@ private fun DeleteOriginalCard(
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Delete originals after encrypting",
+                    text = stringResource(R.string.encrypt_delete_originals),
                     style = VaultType.Meta,
                     color = VaultColors.TextPrimary,
                     fontWeight = FontWeight.SemiBold
@@ -541,9 +543,9 @@ private fun DeleteOriginalCard(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = if (checked) {
-                        "Originals are permanently deleted once they're encrypted."
+                        stringResource(R.string.encrypt_originals_deleted)
                     } else {
-                        "Your original files stay where they are."
+                        stringResource(R.string.encrypt_originals_stay)
                     },
                     style = VaultType.Meta,
                     color = if (checked) VaultColors.WarningAmber else VaultColors.TextSecondary,
@@ -584,12 +586,12 @@ private fun FilesHeader(
     ) {
         Column {
             Text(
-                text = "$count ${if (count == 1) "file" else "files"} selected",
+                text = stringResource(R.string.encrypt_files_selected, count, if (count == 1) stringResource(R.string.home_file) else stringResource(R.string.home_files)),
                 style = VaultType.ItemTitle,
                 color = VaultColors.TextPrimary
             )
             Text(
-                text = "$totalSize in total",
+                text = stringResource(R.string.encrypt_total_size, totalSize),
                 style = VaultType.Meta,
                 color = VaultColors.TextSecondary
             )
@@ -603,7 +605,7 @@ private fun FilesHeader(
             ) {
                 Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Add more", style = VaultType.Meta, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.encrypt_add_more), style = VaultType.Meta, fontWeight = FontWeight.SemiBold)
             }
             TextButton(
                 onClick = onClear,
@@ -611,7 +613,7 @@ private fun FilesHeader(
                 contentPadding = PaddingValues(horizontal = 10.dp),
                 colors = ButtonDefaults.textButtonColors(contentColor = VaultColors.TextSecondary)
             ) {
-                Text("Clear", style = VaultType.Meta)
+                Text(stringResource(R.string.encrypt_clear), style = VaultType.Meta)
             }
         }
     }
@@ -651,12 +653,12 @@ private fun FloatingEncryptActionRow(
         ) {
             Icon(
                 imageVector = Icons.Outlined.Close,
-                contentDescription = "Cancel selection",
+                contentDescription = stringResource(R.string.vault_cancel_selection),
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = "Cancel",
+                text = stringResource(R.string.dialog_cancel),
                 style = VaultType.ItemTitle.copy(fontSize = 15.sp),
                 fontWeight = FontWeight.SemiBold
             )
@@ -685,7 +687,7 @@ private fun FloatingEncryptActionRow(
                     strokeWidth = 2.dp
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Working...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(stringResource(R.string.encrypt_working), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             } else {
                 Icon(
                     imageVector = Icons.Outlined.EnhancedEncryption,
@@ -694,7 +696,7 @@ private fun FloatingEncryptActionRow(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Encrypt $fileCount ${if (fileCount == 1) "file" else "files"}",
+                    text = stringResource(R.string.encrypt_btn_encrypt, fileCount, if (fileCount == 1) stringResource(R.string.home_file) else stringResource(R.string.home_files)),
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     maxLines = 1,
@@ -734,7 +736,7 @@ private fun ProgressPanel(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Encrypting file ${(index + 1).coerceAtMost(total)} of $total",
+                    text = stringResource(R.string.encrypt_progress_file, (index + 1).coerceAtMost(total), total),
                     style = VaultType.Meta,
                     color = VaultColors.TextPrimary,
                     fontWeight = FontWeight.SemiBold
@@ -795,9 +797,9 @@ private fun NoteDialog(
 
     VaultDialog(
         icon = Icons.AutoMirrored.Outlined.NoteAdd,
-        title = "New secure note",
-        subtitle = "Give it a title, then write whatever you want to keep private.",
-        confirmLabel = "Save note",
+        title = stringResource(R.string.vault_note_title),
+        subtitle = stringResource(R.string.encrypt_note_subtitle),
+        confirmLabel = stringResource(R.string.vault_note_save),
         confirmEnabled = title.isNotBlank() && content.isNotBlank(),
         onConfirm = { onSave(title, content) },
         onDismiss = onDismiss
@@ -805,7 +807,7 @@ private fun NoteDialog(
         VaultTextField(
             value = title,
             onValueChange = { title = it },
-            label = "Title",
+            label = stringResource(R.string.vault_note_title_label),
             leadingIcon = Icons.Outlined.Title,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
@@ -816,7 +818,7 @@ private fun NoteDialog(
         VaultTextField(
             value = content,
             onValueChange = { content = it },
-            label = "Note",
+            label = stringResource(R.string.encrypt_note_label),
             minLines = 5,
             maxLines = 8,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
@@ -836,9 +838,9 @@ private fun CredentialDialog(
 
     VaultDialog(
         icon = Icons.Outlined.Key,
-        title = "New credential",
-        subtitle = "Save a login so it's always in your vault.",
-        confirmLabel = "Save credential",
+        title = stringResource(R.string.encrypt_credential_title),
+        subtitle = stringResource(R.string.encrypt_credential_subtitle),
+        confirmLabel = stringResource(R.string.encrypt_save_credential_btn),
         confirmEnabled = title.isNotBlank() && password.isNotBlank(),
         onConfirm = { onSave(title, username, password) },
         onDismiss = onDismiss
@@ -846,7 +848,7 @@ private fun CredentialDialog(
         VaultTextField(
             value = title,
             onValueChange = { title = it },
-            label = "Title (for example, Netflix)",
+            label = stringResource(R.string.encrypt_credential_title_label),
             leadingIcon = Icons.Outlined.Title,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
@@ -857,7 +859,7 @@ private fun CredentialDialog(
         VaultTextField(
             value = username,
             onValueChange = { username = it },
-            label = "Username or email",
+            label = stringResource(R.string.vault_username_email),
             leadingIcon = Icons.Outlined.Person,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
@@ -869,7 +871,7 @@ private fun CredentialDialog(
         VaultTextField(
             value = password,
             onValueChange = { password = it },
-            label = "Password",
+            label = stringResource(R.string.setup_password_label),
             leadingIcon = Icons.Outlined.Lock,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
@@ -886,7 +888,7 @@ private fun CredentialDialog(
                 IconButton(onClick = { showPassword = !showPassword }) {
                     Icon(
                         imageVector = if (showPassword) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                        contentDescription = if (showPassword) "Hide password" else "Show password"
+                        contentDescription = if (showPassword) stringResource(R.string.lock_hide_password) else stringResource(R.string.lock_show_password)
                     )
                 }
             }
@@ -953,7 +955,7 @@ private fun VaultDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = VaultColors.TextSecondary)
+                Text(stringResource(R.string.dialog_cancel), color = VaultColors.TextSecondary)
             }
         }
     )
@@ -1155,19 +1157,19 @@ private fun Modifier.dashedBorder(
 
 private data class FileKind(val icon: ImageVector, val label: String)
 
-private fun fileKindOf(file: SelectedFile): FileKind {
+private fun fileKindOf(file: SelectedFile, context: android.content.Context): FileKind {
     val mime = file.mimeType.orEmpty()
     val ext = file.name.substringAfterLast('.', "").lowercase()
     return when {
-        mime.startsWith("image/") -> FileKind(Icons.Outlined.Image, "Image")
-        mime.startsWith("video/") -> FileKind(Icons.Outlined.Videocam, "Video")
-        mime.startsWith("audio/") -> FileKind(Icons.Outlined.AudioFile, "Audio")
-        mime == "application/pdf" || ext == "pdf" -> FileKind(Icons.Outlined.PictureAsPdf, "PDF document")
+        mime.startsWith("image/") -> FileKind(Icons.Outlined.Image, context.getString(R.string.encrypt_file_kind_image))
+        mime.startsWith("video/") -> FileKind(Icons.Outlined.Videocam, context.getString(R.string.encrypt_file_kind_video))
+        mime.startsWith("audio/") -> FileKind(Icons.Outlined.AudioFile, context.getString(R.string.encrypt_file_kind_audio))
+        mime == "application/pdf" || ext == "pdf" -> FileKind(Icons.Outlined.PictureAsPdf, context.getString(R.string.encrypt_file_kind_pdf))
         ext in setOf("zip", "rar", "7z", "tar", "gz") || mime.contains("zip") ->
-            FileKind(Icons.Outlined.FolderZip, "Archive")
+            FileKind(Icons.Outlined.FolderZip, context.getString(R.string.encrypt_file_kind_archive))
         mime.startsWith("text/") || ext in setOf("doc", "docx", "txt", "md", "odt", "rtf") ->
-            FileKind(Icons.Outlined.Description, "Document")
-        ext.isNotEmpty() -> FileKind(Icons.Outlined.Description, "${ext.uppercase()} file")
-        else -> FileKind(Icons.Outlined.Description, "File")
+            FileKind(Icons.Outlined.Description, context.getString(R.string.encrypt_file_kind_document))
+        ext.isNotEmpty() -> FileKind(Icons.Outlined.Description, context.getString(R.string.encrypt_file_kind_ext_file, ext.uppercase()))
+        else -> FileKind(Icons.Outlined.Description, context.getString(R.string.encrypt_file_kind_file))
     }
 }

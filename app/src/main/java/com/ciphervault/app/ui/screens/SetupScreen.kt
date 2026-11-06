@@ -48,6 +48,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.ciphervault.app.R
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -85,6 +88,7 @@ fun SetupScreen(
     val errorMessage by authViewModel.errorMessage.collectAsState()
     val isProcessing by authViewModel.isProcessing.collectAsState()
 
+    val context = LocalContext.current
     var keyType by remember { mutableStateOf("pin") }
     var key by remember { mutableStateOf("") }
     var confirmKey by remember { mutableStateOf("") }
@@ -115,8 +119,8 @@ fun SetupScreen(
 
     fun submit() {
         when {
-            key.length < minLength -> localError = "Must be at least $minLength characters"
-            key != confirmKey -> localError = "${if (isPin) "PINs" else "Passwords"} do not match"
+            key.length < minLength -> localError = context.getString(R.string.setup_min_chars, minLength)
+            key != confirmKey -> localError = context.getString(R.string.setup_do_not_match, if (isPin) context.getString(R.string.setup_pins) else context.getString(R.string.setup_passwords))
             else -> {
                 if (authViewModel.createVault(keyType, key)) {
                     onComplete()
@@ -146,7 +150,7 @@ fun SetupScreen(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.setup_back),
                     tint = VaultColors.TextPrimary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -157,18 +161,18 @@ fun SetupScreen(
 
         // ---- Header ----
         Text(
-            text = "Create your",
+            text = stringResource(R.string.setup_create_your),
             style = VaultType.PageTitle,
             color = VaultColors.TextPrimary
         )
         Text(
-            text = "master key.",
+            text = stringResource(R.string.setup_master_key),
             style = VaultType.PageTitle.copy(fontStyle = FontStyle.Italic),
             color = VaultColors.Accent
         )
         Spacer(modifier = Modifier.height(10.dp))
         Text(
-            text = "Choose how you'll unlock your vault. It derives the AES-256 key that wraps everything inside.",
+            text = stringResource(R.string.setup_choose_how),
             style = VaultType.Meta,
             color = VaultColors.TextSecondary
         )
@@ -177,7 +181,7 @@ fun SetupScreen(
 
         // ---- Key type ----
         Text(
-            text = "How do you want to unlock it?",
+            text = stringResource(R.string.setup_how_to_unlock),
             style = VaultType.Meta,
             color = VaultColors.TextSecondary,
             modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)
@@ -189,16 +193,16 @@ fun SetupScreen(
             KeyTypeOption(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.Dialpad,
-                title = "Numeric PIN",
-                description = "4 to 6 digits",
+                title = stringResource(R.string.setup_numeric_pin),
+                description = stringResource(R.string.setup_pin_desc),
                 isSelected = isPin,
                 onClick = { switchKeyType("pin") }
             )
             KeyTypeOption(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.Password,
-                title = "Password",
-                description = "Any characters, up to 64",
+                title = stringResource(R.string.setup_password),
+                description = stringResource(R.string.setup_password_desc),
                 isSelected = !isPin,
                 onClick = { switchKeyType("password") }
             )
@@ -228,7 +232,7 @@ fun SetupScreen(
         val transformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation()
 
         val counter: (@Composable () -> Unit)? = if (isPin) {
-            { Text("${key.length} of $maxLength digits") }
+            { Text(stringResource(R.string.setup_digits_count, key.length, maxLength)) }
         } else {
             null
         }
@@ -242,7 +246,7 @@ fun SetupScreen(
                     authViewModel.clearError()
                 }
             },
-            label = { Text(if (isPin) "PIN" else "Password") },
+            label = { Text(if (isPin) stringResource(R.string.setup_pin_label) else stringResource(R.string.setup_password_label)) },
             supportingText = counter,
             singleLine = true,
             visualTransformation = transformation,
@@ -251,7 +255,7 @@ fun SetupScreen(
                 IconButton(onClick = { showKey = !showKey }) {
                     Icon(
                         imageVector = if (showKey) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                        contentDescription = if (showKey) "Hide entries" else "Show entries",
+                        contentDescription = if (showKey) stringResource(R.string.setup_hide_entries) else stringResource(R.string.setup_show_entries),
                         tint = VaultColors.TextSecondary
                     )
                 }
@@ -269,7 +273,7 @@ fun SetupScreen(
         Spacer(modifier = Modifier.height(14.dp))
 
         val mismatchHint: (@Composable () -> Unit)? = if (showMismatch) {
-            { Text("These don't match yet") }
+            { Text(stringResource(R.string.setup_dont_match_yet)) }
         } else {
             null
         }
@@ -282,7 +286,7 @@ fun SetupScreen(
                     localError = null
                 }
             },
-            label = { Text(if (isPin) "Confirm PIN" else "Confirm password") },
+            label = { Text(if (isPin) stringResource(R.string.setup_confirm_pin) else stringResource(R.string.setup_confirm_password)) },
             isError = showMismatch,
             supportingText = mismatchHint,
             singleLine = true,
@@ -293,7 +297,7 @@ fun SetupScreen(
                 if (keysMatch) {
                     Icon(
                         imageVector = Icons.Outlined.CheckCircle,
-                        contentDescription = "Entries match",
+                        contentDescription = stringResource(R.string.setup_entries_match),
                         tint = VaultColors.Accent,
                         modifier = Modifier.padding(end = 12.dp)
                     )
@@ -357,13 +361,13 @@ fun SetupScreen(
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(
-                    text = "This key can't be recovered",
+                    text = stringResource(R.string.setup_cant_recover),
                     style = VaultType.ItemTitle.copy(fontSize = 14.sp),
                     color = VaultColors.TextPrimary
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "It derives your master encryption key using PBKDF2 (150k rounds). If you forget it, your files stay locked.",
+                    text = stringResource(R.string.setup_forget_warning),
                     style = VaultType.Meta,
                     color = VaultColors.TextSecondary,
                     lineHeight = 18.sp
@@ -395,9 +399,9 @@ fun SetupScreen(
                     strokeWidth = 2.dp
                 )
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Creating vault...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(stringResource(R.string.setup_creating_vault), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             } else {
-                Text("Create vault", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(stringResource(R.string.setup_create_vault), fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
         }
 
@@ -477,10 +481,10 @@ private fun KeyTypeOption(
     }
 }
 
-private enum class Strength(val label: String, val segments: Int) {
-    Weak("Weak", 1),
-    Fair("Fair", 2),
-    Strong("Strong", 3)
+private enum class Strength(val segments: Int) {
+    Weak(1),
+    Fair(2),
+    Strong(3)
 }
 
 /** A rough guide based on length and character variety, not a guarantee. */
@@ -531,7 +535,11 @@ private fun StrengthMeter(strength: Strength) {
         }
         Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = strength.label,
+            text = when(strength) {
+                Strength.Weak -> stringResource(R.string.setup_weak)
+                Strength.Fair -> stringResource(R.string.setup_fair)
+                Strength.Strong -> stringResource(R.string.setup_strong)
+            },
             style = VaultType.Meta,
             color = activeColor,
             fontWeight = FontWeight.SemiBold

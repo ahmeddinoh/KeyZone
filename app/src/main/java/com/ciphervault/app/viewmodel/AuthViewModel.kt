@@ -100,7 +100,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         try {
             app.biometricAuthManager.promptBiometric(
                 activity = activity,
-                title = "Unlock KeyZone",
+                title = "Unlock Key Zone",
                 subtitle = "Touch sensor to unlock with biometric key",
                 onSuccess = {
                     try {

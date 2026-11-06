@@ -1,6 +1,7 @@
 package com.ciphervault.app.ui.components
 
 import android.os.Build
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
@@ -47,12 +48,14 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.ciphervault.app.R
 import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
 import dev.chrisbanes.haze.HazeState
@@ -60,11 +63,11 @@ import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeChild
 
-enum class VaultTab(val route: String, val label: String, val icon: ImageVector) {
-    Home("home", "Home", Icons.Outlined.Home),
-    Vault("vault", "Vault", Icons.Outlined.Lock),
-    Encrypt("encrypt", "Encrypt", Icons.Outlined.Key),
-    Settings("settings", "Settings", Icons.Outlined.Tune);
+enum class VaultTab(val route: String, @StringRes val labelRes: Int, val icon: ImageVector) {
+    Home("home", R.string.nav_home, Icons.Outlined.Home),
+    Vault("vault", R.string.nav_vault, Icons.Outlined.Lock),
+    Encrypt("encrypt", R.string.nav_encrypt, Icons.Outlined.Key),
+    Settings("settings", R.string.nav_settings, Icons.Outlined.Tune);
 
     companion object {
         fun fromRoute(route: String?): VaultTab = entries.firstOrNull { it.route == route } ?: Home
@@ -166,6 +169,7 @@ private fun NavPillItem(tab: VaultTab, selected: Boolean, onClick: () -> Unit) {
         targetValue = if (selected) 18.dp else 0.dp,
         animationSpec = tween(250), label = "navPad",
     )
+    val labelText = stringResource(id = tab.labelRes)
 
     Row(
         modifier = Modifier
@@ -174,7 +178,7 @@ private fun NavPillItem(tab: VaultTab, selected: Boolean, onClick: () -> Unit) {
             .clip(CircleShape)
             .background(bg)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
-            .semantics { contentDescription = tab.label }
+            .semantics { contentDescription = labelText }
             .padding(horizontal = hPad),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
@@ -193,7 +197,7 @@ private fun NavPillItem(tab: VaultTab, selected: Boolean, onClick: () -> Unit) {
             Row {
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = tab.label,
+                    text = labelText,
                     style = VaultType.Chip,
                     color = fg,
                     maxLines = 1,

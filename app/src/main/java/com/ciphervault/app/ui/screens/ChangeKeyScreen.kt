@@ -73,6 +73,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import com.ciphervault.app.R
 import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
 import com.ciphervault.app.viewmodel.AuthViewModel
@@ -93,6 +96,9 @@ fun ChangeKeyScreen(
     val errorMessage by authViewModel.errorMessage.collectAsState()
     val isProcessing by authViewModel.isProcessing.collectAsState()
     var localError by remember { mutableStateOf<String?>(null) }
+    
+    val context = LocalContext.current
+    val validKeyError = stringResource(R.string.changekey_err_valid_key)
 
     // From the second step, back returns to the first step instead of leaving the screen.
     fun goBack() {
@@ -127,7 +133,7 @@ fun ChangeKeyScreen(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "Back",
+                contentDescription = stringResource(R.string.setup_back),
                 tint = VaultColors.TextPrimary,
                 modifier = Modifier.size(20.dp)
             )
@@ -137,12 +143,12 @@ fun ChangeKeyScreen(
 
         // ---- Header ----
         Text(
-            text = "Change your",
+            text = stringResource(R.string.changekey_title_1),
             style = VaultType.PageTitle,
             color = VaultColors.TextPrimary
         )
         Text(
-            text = "master key.",
+            text = stringResource(R.string.changekey_title_2),
             style = VaultType.PageTitle.copy(fontStyle = FontStyle.Italic),
             color = VaultColors.Accent
         )
@@ -150,7 +156,7 @@ fun ChangeKeyScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         ChangeKeyStepIndicator(
-            labels = listOf("Current", "New"),
+            labels = listOf(stringResource(R.string.changekey_step_current), stringResource(R.string.changekey_step_new)),
             current = if (step == ChangeKeyStep.VERIFY_CURRENT) 0 else 1
         )
 
@@ -181,7 +187,7 @@ fun ChangeKeyScreen(
                                 authViewModel.clearError()
                                 step = ChangeKeyStep.SET_NEW
                             } else {
-                                localError = "Please enter a valid key"
+                                localError = validKeyError
                             }
                         }
                     )
@@ -223,13 +229,13 @@ private fun VerifyCurrentKeyStep(
     var showKey by remember { mutableStateOf(false) }
 
     val isPin = currentKeyType == "pin"
-    val label = if (isPin) "PIN" else "password"
+    val label = if (isPin) stringResource(R.string.setup_pin_label) else stringResource(R.string.setup_password_label)
     val canContinue = key.isNotEmpty() && !isProcessing
 
     Column(modifier = Modifier.fillMaxWidth()) {
         StepHeader(
-            title = "Enter your current $label",
-            description = "We need it to authorize the change. Your new key comes next."
+            title = stringResource(R.string.changekey_enter_current, label),
+            description = stringResource(R.string.changekey_verify_desc)
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -240,7 +246,7 @@ private fun VerifyCurrentKeyStep(
                 key = if (isPin) it.filter { c -> c.isDigit() } else it
                 onInputChanged()
             },
-            label = { Text("Current $label") },
+            label = { Text(stringResource(R.string.changekey_current_label, label)) },
             leadingIcon = {
                 Icon(
                     imageVector = if (isPin) Icons.Outlined.Dialpad else Icons.Outlined.Password,
@@ -260,7 +266,7 @@ private fun VerifyCurrentKeyStep(
                 IconButton(onClick = { showKey = !showKey }) {
                     Icon(
                         imageVector = if (showKey) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                        contentDescription = if (showKey) "Hide $label" else "Show $label",
+                        contentDescription = if (showKey) stringResource(R.string.changekey_hide, label) else stringResource(R.string.changekey_show, label),
                         tint = VaultColors.TextSecondary
                     )
                 }
@@ -275,7 +281,7 @@ private fun VerifyCurrentKeyStep(
         Spacer(modifier = Modifier.height(24.dp))
 
         PrimaryAction(
-            label = "Continue",
+            label = stringResource(R.string.changekey_continue),
             enabled = canContinue,
             loading = false,
             onClick = { onVerify(key) }

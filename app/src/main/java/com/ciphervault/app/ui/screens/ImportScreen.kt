@@ -58,6 +58,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.res.stringResource
+import com.ciphervault.app.R
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -125,7 +127,7 @@ fun ImportScreen(
         ImportViewModel.ImportStep.SUCCESS -> 3
     }
     // Once we know the backup has no 2FA, there is no third step to show.
-    val stepLabels = if (backupInfo?.hasTotp != false) listOf("File", "Key", "2FA") else listOf("File", "Key")
+    val stepLabels = if (backupInfo?.hasTotp != false) listOf(stringResource(R.string.import_step_file), stringResource(R.string.import_step_key), stringResource(R.string.import_step_2fa)) else listOf(stringResource(R.string.import_step_file), stringResource(R.string.import_step_key))
     val isSuccess = step == ImportViewModel.ImportStep.SUCCESS
 
     val canSubmitKey = keyInput.length >= 4 && !isLoading
@@ -164,7 +166,7 @@ fun ImportScreen(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = "Back",
+                        contentDescription = stringResource(R.string.setup_back),
                         tint = VaultColors.TextPrimary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -177,18 +179,18 @@ fun ImportScreen(
 
             // ---- Header ----
             Text(
-                text = "Import",
+                text = stringResource(R.string.import_title_1),
                 style = VaultType.PageTitle,
                 color = VaultColors.TextPrimary
             )
             Text(
-                text = "your vault.",
+                text = stringResource(R.string.import_title_2),
                 style = VaultType.PageTitle.copy(fontStyle = FontStyle.Italic),
                 color = VaultColors.Accent
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Restore a .cvault backup archive.",
+                text = stringResource(R.string.import_subtitle),
                 style = VaultType.Meta,
                 color = VaultColors.TextSecondary
             )
@@ -211,8 +213,8 @@ fun ImportScreen(
                 ImportViewModel.ImportStep.SELECT_FILE -> {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         StepHeader(
-                            title = "Select your backup",
-                            description = "Choose a KeyZone backup (.cvault) from your device storage or downloads."
+                            title = stringResource(R.string.import_select_backup),
+                            description = stringResource(R.string.import_select_backup_desc)
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         BackupDropZone(onClick = {
@@ -227,8 +229,8 @@ fun ImportScreen(
                     val isPin = backupInfo?.keyType == "pin"
                     Column(modifier = Modifier.fillMaxWidth()) {
                         StepHeader(
-                            title = if (isPin) "Enter your vault PIN" else "Enter your vault password",
-                            description = "This backup is protected by a ${if (isPin) "numeric PIN" else "password"}. Enter the key you used when you created the vault."
+                            title = if (isPin) stringResource(R.string.import_enter_pin) else stringResource(R.string.import_enter_password),
+                            description = stringResource(R.string.import_backup_protected, if (isPin) stringResource(R.string.import_numeric_pin) else stringResource(R.string.import_password)),
                         )
 
                         backupInfo?.let { info ->
@@ -247,7 +249,7 @@ fun ImportScreen(
                                 keyInput = if (isPin) it.filter { c -> c.isDigit() } else it
                                 importViewModel.clearError()
                             },
-                            label = { Text(if (isPin) "Vault PIN" else "Vault password") },
+                            label = { Text(if (isPin) stringResource(R.string.import_vault_pin) else stringResource(R.string.import_vault_password)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = if (isPin) Icons.Outlined.Dialpad else Icons.Outlined.Password,
@@ -268,7 +270,7 @@ fun ImportScreen(
                                 IconButton(onClick = { showKey = !showKey }) {
                                     Icon(
                                         imageVector = if (showKey) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                        contentDescription = if (showKey) "Hide key" else "Show key",
+                                        contentDescription = if (showKey) stringResource(R.string.import_hide_key) else stringResource(R.string.import_show_key),
                                         tint = VaultColors.TextSecondary
                                     )
                                 }
@@ -283,7 +285,7 @@ fun ImportScreen(
                         Spacer(modifier = Modifier.height(24.dp))
 
                         PrimaryAction(
-                            label = "Verify key and continue",
+                            label = stringResource(R.string.import_verify_key),
                             enabled = canSubmitKey,
                             loading = isLoading,
                             onClick = { importViewModel.submitKey(keyInput) }
@@ -294,11 +296,11 @@ fun ImportScreen(
                 ImportViewModel.ImportStep.ENTER_TOTP -> {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         StepHeader(
-                            title = if (useRecoveryCode) "Enter a recovery code" else "Two-factor verification",
+                            title = if (useRecoveryCode) stringResource(R.string.import_enter_recovery) else stringResource(R.string.import_two_factor),
                             description = if (useRecoveryCode) {
-                                "Enter one of your 8 emergency recovery codes (for example XXXXX-XXXXX)."
+                                stringResource(R.string.import_recovery_desc)
                             } else {
-                                "Open your Authenticator app and enter the 6-digit code for KeyZone."
+                                stringResource(R.string.import_auth_desc)
                             }
                         )
 
@@ -311,7 +313,7 @@ fun ImportScreen(
                                 totpInput = filtered
                                 importViewModel.clearError()
                             },
-                            label = { Text(if (useRecoveryCode) "Recovery code" else "6-digit code") },
+                            label = { Text(if (useRecoveryCode) stringResource(R.string.import_recovery_code) else stringResource(R.string.import_6digit_code)) },
                             singleLine = true,
                             textStyle = LocalTextStyle.current.copy(
                                 fontSize = if (useRecoveryCode) 16.sp else 24.sp,
@@ -341,8 +343,8 @@ fun ImportScreen(
                             contentPadding = PaddingValues(horizontal = 4.dp)
                         ) {
                             Text(
-                                text = if (useRecoveryCode) "Switch back to the 6-digit authenticator code"
-                                else "Lost your phone? Use an emergency recovery code",
+                                text = if (useRecoveryCode) stringResource(R.string.import_switch_to_auth)
+                                else stringResource(R.string.import_use_recovery),
                                 color = VaultColors.Accent,
                                 style = VaultType.Meta
                             )
@@ -353,7 +355,7 @@ fun ImportScreen(
                         Spacer(modifier = Modifier.height(20.dp))
 
                         PrimaryAction(
-                            label = "Validate and open vault",
+                            label = stringResource(R.string.import_validate_open),
                             enabled = canSubmitTotp,
                             loading = isLoading,
                             onClick = { importViewModel.submitTotp(totpInput) { onImportSuccess() } }
@@ -373,7 +375,7 @@ fun ImportScreen(
                         Spacer(modifier = Modifier.height(28.dp))
 
                         Text(
-                            text = "Vault restored",
+                            text = stringResource(R.string.import_restored),
                             style = VaultType.PageTitle,
                             color = VaultColors.TextPrimary,
                             textAlign = TextAlign.Center
@@ -382,7 +384,7 @@ fun ImportScreen(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
-                            text = "Your encrypted files and keys have been restored to this device.",
+                            text = stringResource(R.string.import_restored_desc),
                             style = VaultType.Meta,
                             color = VaultColors.TextSecondary,
                             textAlign = TextAlign.Center,
@@ -410,9 +412,9 @@ fun ImportScreen(
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = if (backupInfo?.hasTotp == true) {
-                                    "From now on you only need your PIN or password to unlock. The authenticator 2FA code isn't needed for daily use."
+                                    stringResource(R.string.import_2fa_not_needed)
                                 } else {
-                                    "From now on you only need your PIN or password to unlock. You can enable 2FA later in Settings."
+                                    stringResource(R.string.import_can_enable_2fa)
                                 },
                                 style = VaultType.Meta,
                                 color = VaultColors.TextSecondary,
@@ -423,7 +425,7 @@ fun ImportScreen(
                         Spacer(modifier = Modifier.height(32.dp))
 
                         PrimaryAction(
-                            label = "Open vault",
+                            label = stringResource(R.string.import_open_vault),
                             enabled = true,
                             loading = false,
                             onClick = onImportSuccess
@@ -511,7 +513,7 @@ private fun StepNode(number: Int, label: String, done: Boolean, active: Boolean)
             if (done) {
                 Icon(
                     imageVector = Icons.Outlined.Check,
-                    contentDescription = "$label done",
+                    contentDescription = stringResource(R.string.import_step_done, label),
                     tint = Color.Black,
                     modifier = Modifier.size(16.dp)
                 )
@@ -544,7 +546,7 @@ private fun BackupDropZone(onClick: () -> Unit) {
             .clip(shape)
             .background(VaultColors.AccentTint.copy(alpha = 0.55f))
             .dashedBorder(VaultColors.Accent.copy(alpha = 0.5f), cornerRadius = 24.dp)
-            .clickable(role = Role.Button, onClickLabel = "Choose a backup file", onClick = onClick)
+            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.import_choose_backup), onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 36.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -556,7 +558,7 @@ private fun BackupDropZone(onClick: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(18.dp))
         Text(
-            text = "Tap to choose a .cvault archive",
+            text = stringResource(R.string.import_tap_choose),
             style = VaultType.ItemTitle,
             color = VaultColors.TextPrimary,
             textAlign = TextAlign.Center
@@ -577,7 +579,7 @@ private fun BackupDropZone(onClick: () -> Unit) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Browse files",
+                text = stringResource(R.string.import_browse_files),
                 style = VaultType.ItemTitle.copy(fontSize = 14.sp),
                 color = Color.Black,
                 fontWeight = FontWeight.Bold
@@ -606,7 +608,7 @@ private fun BackupSummary(fileCount: Int, hasTotp: Boolean) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Backup archive verified",
+                text = stringResource(R.string.import_verified),
                 style = VaultType.Meta,
                 color = VaultColors.Accent,
                 fontWeight = FontWeight.Bold
@@ -626,7 +628,7 @@ private fun BackupSummary(fileCount: Int, hasTotp: Boolean) {
                     color = VaultColors.TextPrimary
                 )
                 Text(
-                    text = if (fileCount == 1) "encrypted file" else "encrypted files",
+                    text = if (fileCount == 1) stringResource(R.string.import_encrypted_file) else stringResource(R.string.import_encrypted_files),
                     style = VaultType.Meta,
                     color = VaultColors.TextSecondary
                 )
@@ -643,12 +645,12 @@ private fun BackupSummary(fileCount: Int, hasTotp: Boolean) {
                     .padding(start = 16.dp)
             ) {
                 Text(
-                    text = if (hasTotp) "Required" else "Off",
+                    text = if (hasTotp) stringResource(R.string.import_required) else stringResource(R.string.import_off),
                     style = VaultType.ItemTitle.copy(fontSize = 22.sp),
                     color = if (hasTotp) VaultColors.Accent else VaultColors.TextPrimary
                 )
                 Text(
-                    text = "Two-factor authentication",
+                    text = stringResource(R.string.import_2fa_title),
                     style = VaultType.Meta,
                     color = VaultColors.TextSecondary
                 )

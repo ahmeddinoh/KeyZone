@@ -197,6 +197,7 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
         }
     }
 
+    val vaultFiles by vaultViewModel.files.collectAsState()
     val hasSelectedFiles = vaultViewModel.selectedFilesForEncryption.isNotEmpty()
     val showBottomBar = currentRoute in listOf("home", "vault", "encrypt", "settings") && !(currentRoute == "encrypt" && hasSelectedFiles)
 
@@ -205,7 +206,7 @@ private fun MainAppScaffold(authViewModel: AuthViewModel) {
     // Reset visibility when navigating to a new screen or when selected files change
     // This ensures if the list shrinks (e.g., after encrypting) and can no longer scroll,
     // the nav bar isn't stuck hidden.
-    LaunchedEffect(currentRoute, hasSelectedFiles) {
+    LaunchedEffect(currentRoute, hasSelectedFiles, vaultFiles.size) {
         isBottomBarVisible.value = true
     }
     

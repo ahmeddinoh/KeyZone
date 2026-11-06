@@ -1,6 +1,9 @@
 package com.ciphervault.app.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateDpAsState
@@ -60,21 +63,33 @@ import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
 import java.util.Locale
 import androidx.activity.compose.BackHandler
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.ui.res.stringResource
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.mutableIntStateOf
 
 /** The two languages the app will offer. */
-enum class AppLanguage(val tag: String, val label: String) {
-    English("en", "English"),
-    Arabic("ar", "العربية");
+enum class AppLanguage(val tag: String, val labelRes: Int) {
+    English("en", R.string.language_english),
+    Arabic("ar", R.string.language_arabic);
 
     companion object {
         fun fromTag(tag: String?): AppLanguage =
             entries.firstOrNull { tag != null && tag.startsWith(it.tag) } ?: English
 
         fun fromSystem(): AppLanguage = fromTag(Locale.getDefault().language)
+        
+        fun current(): AppLanguage {
+            val locales = AppCompatDelegate.getApplicationLocales()
+            return if (!locales.isEmpty) {
+                fromTag(locales.get(0)?.language)
+            } else {
+                fromSystem()
+            }
+        }
     }
 }
 
@@ -95,7 +110,6 @@ private val PagerHeight = 172.dp
 fun WelcomeScreen(
     onCreateVault: () -> Unit,
     onImportVault: () -> Unit,
-    initialLanguage: AppLanguage = AppLanguage.English,
     onLanguageChange: (AppLanguage) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -111,19 +125,17 @@ fun WelcomeScreen(
     BackHandler {
         if (backPressCount == 0) {
             backPressCount++
-            Toast.makeText(context, "Press back button again to exit", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.welcome_press_back), Toast.LENGTH_SHORT).show()
         } else {
             val activity = context as? android.app.Activity
             activity?.finish()
         }
     }
 
-    // PLACEHOLDER: the switch only remembers which side was tapped and reports it through
-    // onLanguageChange. Nothing on this screen changes language yet; the copy is English only.
-    var languageTag by rememberSaveable { mutableStateOf(initialLanguage.tag) }
+    var languageTag by rememberSaveable { mutableStateOf(AppLanguage.current().tag) }
     val language = AppLanguage.fromTag(languageTag)
 
-    val pages = remember { welcomePages() }
+    val pages = welcomePages()
     val pagerState = rememberPagerState(pageCount = { pages.size })
 
     // The portal builds itself first, then the text and actions follow.
@@ -131,109 +143,116 @@ fun WelcomeScreen(
     LaunchedEffect(Unit) { portalEntered = true }
     val entrance = remember { MutableTransitionState(false).apply { targetState = true } }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(VaultColors.Ground)
-            .systemBarsPadding()
-            .padding(horizontal = 36.dp)
-    ) {
-        // ---- Name and language ----
-        Row(
+    AnimatedContent(
+        targetState = language,
+        transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(400)) },
+        label = "language_transition"
+    ) { currentLanguage ->
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxSize()
+                .background(VaultColors.Ground)
+                .systemBarsPadding()
+                .padding(horizontal = 36.dp)
         ) {
-            Text(
-                text = "Key Zone".uppercase(),
-                style = VaultType.Wordmark,
-                color = VaultColors.Accent
-            )
-            LanguageSwitch(
-                selected = language,
-                onSelect = {
-                    languageTag = it.tag
-                    onLanguageChange(it)
-                }
-            )
-        }
-
-        // ---- Portal: takes whatever height is left, up to the design's 300dp ----
-        BoxWithConstraints(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            val archHeight = (maxHeight - 32.dp).coerceIn(120.dp, 300.dp)
-            PortalArch(height = archHeight, entered = portalEntered)
-        }
-
-        // ---- Headlines: swipe for what Key Zone does ----
-        AnimatedVisibility(
-            visibleState = entrance,
-            enter = fadeIn(tween(600, delayMillis = 500)) +
-                    slideInVertically(tween(600, delayMillis = 500)) { it / 8 }
-        ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                HorizontalPager(
-                    state = pagerState,
-                    pageSpacing = 24.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(PagerHeight)
-                ) { index ->
-                    HeadlinePage(page = pages[index])
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                PagerDashes(count = pages.size, current = pagerState.currentPage)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(28.dp))
-
-        // ---- Actions ----
-        AnimatedVisibility(
-            visibleState = entrance,
-            enter = fadeIn(tween(500, delayMillis = 700)) +
-                    slideInVertically(tween(500, delayMillis = 700)) { it / 4 }
-        ) {
-            Column(
+            // ---- Name and language ----
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp)
+                    .padding(top = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = onCreateVault,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = VaultColors.TextPrimary,
-                        contentColor = VaultColors.Ground
-                    ),
-                    shape = RoundedCornerShape(28.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                ) {
-                    Text("Create new vault", style = VaultType.Button.copy(fontSize = 16.sp))
+                Text(
+                    text = stringResource(R.string.app_name).uppercase(),
+                    style = VaultType.Wordmark,
+                    color = VaultColors.Accent
+                )
+                LanguageSwitch(
+                    selected = currentLanguage,
+                    onSelect = {
+                        languageTag = it.tag
+                        AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(it.tag))
+                        onLanguageChange(it)
+                    }
+                )
+            }
+
+            // ---- Portal: takes whatever height is left, up to the design's 300dp ----
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                val archHeight = (maxHeight - 32.dp).coerceIn(120.dp, 300.dp)
+                PortalArch(height = archHeight, entered = portalEntered)
+            }
+
+            // ---- Headlines: swipe for what Key Zone does ----
+            AnimatedVisibility(
+                visibleState = entrance,
+                enter = fadeIn(tween(600, delayMillis = 500)) +
+                        slideInVertically(tween(600, delayMillis = 500)) { it / 8 }
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    HorizontalPager(
+                        state = pagerState,
+                        pageSpacing = 24.dp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(PagerHeight)
+                    ) { index ->
+                        HeadlinePage(page = pages[index])
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    PagerDashes(count = pages.size, current = pagerState.currentPage)
                 }
+            }
 
-                Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
-                TextButton(
-                    onClick = onImportVault,
+            // ---- Actions ----
+            AnimatedVisibility(
+                visibleState = entrance,
+                enter = fadeIn(tween(500, delayMillis = 700)) +
+                        slideInVertically(tween(500, delayMillis = 700)) { it / 4 }
+            ) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
+                        .padding(bottom = 24.dp)
                 ) {
-                    Text(
-                        text = "Import existing vault",
-                        style = VaultType.ItemTitle,
-                        color = VaultColors.TextPrimary
-                    )
+                    Button(
+                        onClick = onCreateVault,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = VaultColors.TextPrimary,
+                            contentColor = VaultColors.Ground
+                        ),
+                        shape = RoundedCornerShape(28.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    ) {
+                        Text(stringResource(R.string.welcome_create_vault), style = VaultType.Button.copy(fontSize = 16.sp))
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    TextButton(
+                        onClick = onImportVault,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.welcome_import_vault),
+                            style = VaultType.ItemTitle,
+                            color = VaultColors.TextPrimary
+                        )
+                    }
                 }
             }
         }
@@ -322,18 +341,18 @@ private fun PortalArch(height: Dp, entered: Boolean, modifier: Modifier = Modifi
 private fun HeadlinePage(page: WelcomePage) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = page.lineOne,
+            text = stringResource(page.lineOneRes),
             style = VaultType.Headline,
             color = VaultColors.TextPrimary
         )
         Text(
-            text = page.lineTwo,
+            text = stringResource(page.lineTwoRes),
             style = VaultType.Headline.copy(fontStyle = FontStyle.Italic),
             color = VaultColors.Accent
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = page.body,
+            text = stringResource(page.bodyRes),
             style = VaultType.Meta.copy(fontSize = 14.sp, lineHeight = 21.sp),
             color = VaultColors.TextSecondary,
             maxLines = 3
@@ -393,7 +412,7 @@ private fun LanguageSwitch(
                 label = "languageBg${language.tag}"
             )
             Text(
-                text = language.label,
+                text = stringResource(language.labelRes),
                 style = VaultType.Chip.copy(fontSize = 12.sp),
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 color = if (isSelected) VaultColors.Ground else VaultColors.TextSecondary,
@@ -415,32 +434,33 @@ private fun LanguageSwitch(
 //  Copy
 // =====================================================================
 
-private class WelcomePage(val lineOne: String, val lineTwo: String, val body: String)
+private class WelcomePage(val lineOneRes: Int, val lineTwoRes: Int, val bodyRes: Int)
 
+@Composable
 private fun welcomePages(): List<WelcomePage> = listOf(
     WelcomePage(
-        lineOne = "Locked away,",
-        lineTwo = "on your device.",
-        body = "Every file is encrypted with AES-256-GCM before it goes into the vault."
+        lineOneRes = R.string.welcome_page1_line1,
+        lineTwoRes = R.string.welcome_page1_line2,
+        bodyRes = R.string.welcome_page1_body
     ),
     WelcomePage(
-        lineOne = "One key,",
-        lineTwo = "only yours.",
-        body = "Your PIN or password derives the master key using PBKDF2 (150k rounds). Fingerprint unlock is optional."
+        lineOneRes = R.string.welcome_page2_line1,
+        lineTwoRes = R.string.welcome_page2_line2,
+        bodyRes = R.string.welcome_page2_body
     ),
     WelcomePage(
-        lineOne = "A second lock,",
-        lineTwo = "if you want it.",
-        body = "Add an authenticator app for a 6-digit code, plus 8 emergency recovery codes."
+        lineOneRes = R.string.welcome_page3_line1,
+        lineTwoRes = R.string.welcome_page3_line2,
+        bodyRes = R.string.welcome_page3_body
     ),
     WelcomePage(
-        lineOne = "Files, notes,",
-        lineTwo = "and logins.",
-        body = "Keep them together, then search, sort, tag and preview them without leaving the app."
+        lineOneRes = R.string.welcome_page4_line1,
+        lineTwoRes = R.string.welcome_page4_line2,
+        bodyRes = R.string.welcome_page4_body
     ),
     WelcomePage(
-        lineOne = "Take it",
-        lineTwo = "with you.",
-        body = "Back up to a .cvault archive and import it on any new phone. Files stay encrypted inside."
+        lineOneRes = R.string.welcome_page5_line1,
+        lineTwoRes = R.string.welcome_page5_line2,
+        bodyRes = R.string.welcome_page5_body
     )
 )

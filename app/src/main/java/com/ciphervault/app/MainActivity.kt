@@ -11,11 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.fragment.app.FragmentActivity
+import androidx.appcompat.app.AppCompatActivity
 import com.ciphervault.app.ui.navigation.CipherVaultNavHost
 import com.ciphervault.app.ui.theme.CipherVaultTheme
 
-class MainActivity : FragmentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private val app get() = application as CipherVaultApp
 
@@ -61,6 +61,20 @@ class MainActivity : FragmentActivity() {
         applyScreenSecurity()
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (app.vaultConfig.autoLockOnBackground && app.vaultConfig.isInitialized) {
+            val delayMillis = app.vaultConfig.autoLockDelayMillis
+            if (delayMillis > 0L && app.backgroundTimestamp > 0L) {
+                val elapsed = System.currentTimeMillis() - app.backgroundTimestamp
+                if (elapsed >= delayMillis) {
+                    app.lockVault()
+                }
+                app.backgroundTimestamp = 0L
+            }
+        }
+    }
+
     override fun onStop() {
         super.onStop()
         if (isChangingConfigurations) {
@@ -72,7 +86,12 @@ class MainActivity : FragmentActivity() {
         }
         // Auto-lock vault when placed in background if enabled in settings
         if (app.vaultConfig.autoLockOnBackground && app.vaultConfig.isInitialized) {
-            app.lockVault()
+            val delayMillis = app.vaultConfig.autoLockDelayMillis
+            if (delayMillis == 0L) {
+                app.lockVault()
+            } else {
+                app.backgroundTimestamp = System.currentTimeMillis()
+            }
         }
     }
 

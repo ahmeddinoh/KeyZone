@@ -80,6 +80,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -102,6 +103,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.ciphervault.app.CipherVaultApp
+import com.ciphervault.app.R
 import com.ciphervault.app.ui.theme.VaultColors
 import com.ciphervault.app.ui.theme.VaultType
 import com.ciphervault.app.viewmodel.VaultViewModel
@@ -244,7 +246,7 @@ fun MediaPreviewScreen(
                 setDataAndType(uri, file?.mimeType ?: "*/*")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(Intent.createChooser(intent, "Open with"))
+            context.startActivity(Intent.createChooser(intent, context.getString(R.string.preview_open_with)))
             vaultViewModel.clearDecryptedUri()
         }
     }
@@ -394,7 +396,7 @@ fun MediaPreviewScreen(
                 enter = fadeIn() + scaleIn(initialScale = 0.8f),
                 exit = fadeOut() + scaleOut(targetScale = 0.8f)
             ) {
-                SeekFlash(icon = Icons.Outlined.Replay10, label = "10 seconds back")
+                SeekFlash(icon = Icons.Outlined.Replay10, label = stringResource(R.string.preview_10_seconds_back))
             }
             AnimatedVisibility(
                 visible = flashSide == 1,
@@ -404,7 +406,7 @@ fun MediaPreviewScreen(
                 enter = fadeIn() + scaleIn(initialScale = 0.8f),
                 exit = fadeOut() + scaleOut(targetScale = 0.8f)
             ) {
-                SeekFlash(icon = Icons.Outlined.Forward10, label = "10 seconds forward")
+                SeekFlash(icon = Icons.Outlined.Forward10, label = stringResource(R.string.preview_10_seconds_forward))
             }
         }
 
@@ -417,7 +419,7 @@ fun MediaPreviewScreen(
                 CircularProgressIndicator(color = VaultColors.Accent)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Decrypting your file...",
+                    text = stringResource(R.string.preview_decrypting_file),
                     style = VaultType.Meta,
                     color = Color.White.copy(alpha = 0.8f)
                 )
@@ -439,14 +441,14 @@ fun MediaPreviewScreen(
                 )
                 Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = "Couldn't play this file",
+                    text = stringResource(R.string.preview_couldnt_play_file),
                     style = VaultType.ItemTitle,
                     color = Color.White,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "Its format may not be supported here. Try opening it in another app.",
+                    text = stringResource(R.string.preview_file_unsupported),
                     style = VaultType.Meta,
                     color = Color.White.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
@@ -460,7 +462,7 @@ fun MediaPreviewScreen(
                         contentColor = Color.Black
                     )
                 ) {
-                    Text("Open in another app", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.preview_open_in_another), fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -487,7 +489,7 @@ fun MediaPreviewScreen(
                 ) {
                     RoundControl(
                         icon = Icons.AutoMirrored.Outlined.ArrowBack,
-                        description = "Back",
+                        description = stringResource(R.string.preview_back),
                         size = 44.dp,
                         iconSize = 22.dp,
                         onClick = onBack
@@ -495,7 +497,7 @@ fun MediaPreviewScreen(
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = file?.originalFileName ?: "Media preview",
+                            text = file?.originalFileName ?: stringResource(R.string.preview_media_preview),
                             style = VaultType.ItemTitle.copy(fontSize = 16.sp),
                             color = Color.White,
                             maxLines = 1,
@@ -503,7 +505,7 @@ fun MediaPreviewScreen(
                         )
                         if (file != null) {
                             Text(
-                                text = "${if (isAudio) "Audio" else "Video"}, ${formatFileSize(file.originalSize)}",
+                                text = "${if (isAudio) stringResource(R.string.preview_audio) else stringResource(R.string.preview_video)}, ${formatFileSize(file.originalSize)}",
                                 style = VaultType.Meta,
                                 color = Color.White.copy(alpha = 0.7f)
                             )
@@ -512,7 +514,7 @@ fun MediaPreviewScreen(
                     IconButton(onClick = { file?.let { vaultViewModel.decryptFile(it) } }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
-                            contentDescription = "Open in another app",
+                            contentDescription = stringResource(R.string.preview_open_in_another),
                             tint = VaultColors.Accent
                         )
                     }
@@ -626,7 +628,7 @@ fun MediaPreviewScreen(
                                         )
                                         .clickable(
                                             role = Role.Button,
-                                            onClickLabel = "Change playback speed"
+                                            onClickLabel = stringResource(R.string.preview_change_playback_speed)
                                         ) {
                                             speedMenuOpen = true
                                             interactionTick++
@@ -661,7 +663,7 @@ fun MediaPreviewScreen(
 
                             ToggleIcon(
                                 icon = if (isLooping) Icons.Outlined.RepeatOne else Icons.Outlined.Repeat,
-                                description = if (isLooping) "Turn loop off" else "Loop this file",
+                                description = if (isLooping) stringResource(R.string.preview_turn_loop_off) else stringResource(R.string.preview_loop_this_file),
                                 active = isLooping,
                                 onClick = {
                                     isLooping = !isLooping
@@ -671,7 +673,7 @@ fun MediaPreviewScreen(
                             )
                             ToggleIcon(
                                 icon = if (isMuted) Icons.Outlined.VolumeOff else Icons.Outlined.VolumeUp,
-                                description = if (isMuted) "Unmute" else "Mute",
+                                description = if (isMuted) stringResource(R.string.preview_unmute) else stringResource(R.string.preview_mute),
                                 active = isMuted,
                                 onClick = {
                                     isMuted = !isMuted
@@ -682,13 +684,13 @@ fun MediaPreviewScreen(
                             if (!isAudio) {
                                 ToggleIcon(
                                     icon = Icons.Outlined.ScreenRotation,
-                                    description = if (isLandscape) "Rotate to portrait" else "Rotate to landscape",
+                                    description = if (isLandscape) stringResource(R.string.preview_rotate_to_portrait) else stringResource(R.string.preview_rotate_to_landscape),
                                     active = isLandscape,
                                     onClick = { toggleOrientation() }
                                 )
                                 ToggleIcon(
                                     icon = if (fillScreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
-                                    description = if (fillScreen) "Fit to screen" else "Fill screen",
+                                    description = if (fillScreen) stringResource(R.string.preview_fit_to_screen) else stringResource(R.string.preview_fill_screen),
                                     active = fillScreen,
                                     onClick = {
                                         fillScreen = !fillScreen
@@ -725,16 +727,16 @@ private fun TransportRow(
     ) {
         RoundControl(
             icon = Icons.Outlined.Replay10,
-            description = "Back 10 seconds",
+            description = stringResource(R.string.preview_back_10_seconds),
             size = 56.dp,
             iconSize = 28.dp,
             onClick = onBack10
         )
 
         val label = when {
-            isEnded -> "Replay"
-            isPlaying -> "Pause"
-            else -> "Play"
+            isEnded -> stringResource(R.string.preview_replay)
+            isPlaying -> stringResource(R.string.preview_pause)
+            else -> stringResource(R.string.preview_play)
         }
         Box(
             modifier = Modifier
@@ -766,7 +768,7 @@ private fun TransportRow(
 
         RoundControl(
             icon = Icons.Outlined.Forward10,
-            description = "Forward 10 seconds",
+            description = stringResource(R.string.preview_forward_10_seconds),
             size = 56.dp,
             iconSize = 28.dp,
             onClick = onForward10
@@ -834,7 +836,7 @@ private fun SeekFlash(icon: ImageVector, label: String) {
             modifier = Modifier.size(34.dp)
         )
         Text(
-            text = "10s",
+            text = stringResource(R.string.preview_10s),
             style = VaultType.Meta,
             color = Color.White,
             fontWeight = FontWeight.SemiBold

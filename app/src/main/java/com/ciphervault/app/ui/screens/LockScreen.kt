@@ -63,8 +63,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.ciphervault.app.R
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -123,7 +125,7 @@ fun LockScreen(authViewModel: AuthViewModel) {
     BackHandler {
         if (backPressCount == 0) {
             backPressCount++
-            Toast.makeText(context, "Press back button again to exit", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.welcome_press_back), Toast.LENGTH_SHORT).show()
         } else {
             val activity = context as? android.app.Activity
             activity?.finish()
@@ -223,7 +225,7 @@ fun LockScreen(authViewModel: AuthViewModel) {
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
-                    text = "KeyZone",
+                    text = stringResource(R.string.app_name),
                     style = VaultType.PageTitle,
                     color = VaultColors.TextPrimary,
                     fontWeight = FontWeight.Bold,
@@ -233,8 +235,8 @@ fun LockScreen(authViewModel: AuthViewModel) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = if (isPin) "Enter your PIN to unlock"
-                    else "Enter your password to unlock",
+                    text = if (isPin) stringResource(R.string.pin_enter)
+                    else stringResource(R.string.lock_password_enter),
                     style = VaultType.Meta,
                     color = VaultColors.TextSecondary,
                     textAlign = TextAlign.Center
@@ -258,7 +260,7 @@ fun LockScreen(authViewModel: AuthViewModel) {
                                 input = it
                                 authViewModel.clearError()
                             },
-                            label = { Text("Vault password") },
+                            label = { Text(stringResource(R.string.lock_vault_password)) },
                             singleLine = true,
                             enabled = lockoutSeconds == 0,
                             isError = hasError,
@@ -287,7 +289,7 @@ fun LockScreen(authViewModel: AuthViewModel) {
                                     Icon(
                                         imageVector = if (showPassword) Icons.Outlined.VisibilityOff
                                         else Icons.Outlined.Visibility,
-                                        contentDescription = if (showPassword) "Hide password" else "Show password",
+                                        contentDescription = if (showPassword) stringResource(R.string.lock_hide_password) else stringResource(R.string.lock_show_password),
                                         tint = VaultColors.TextSecondary
                                     )
                                 }
@@ -334,7 +336,7 @@ fun LockScreen(authViewModel: AuthViewModel) {
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Unlocking...",
+                                    text = stringResource(R.string.lock_unlocking),
                                     style = VaultType.Meta,
                                     color = VaultColors.TextSecondary
                                 )
@@ -412,7 +414,7 @@ fun LockScreen(authViewModel: AuthViewModel) {
                             strokeWidth = 2.dp
                         )
                         Spacer(modifier = Modifier.width(10.dp))
-                        Text("Unlocking...", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(stringResource(R.string.lock_unlocking), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     } else {
                         Icon(
                             imageVector = Icons.Outlined.LockOpen,
@@ -420,7 +422,7 @@ fun LockScreen(authViewModel: AuthViewModel) {
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Unlock vault", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(stringResource(R.string.lock_unlock_vault), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 }
 
@@ -444,7 +446,7 @@ fun LockScreen(authViewModel: AuthViewModel) {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Unlock with fingerprint",
+                            text = stringResource(R.string.lock_unlock_fingerprint),
                             color = VaultColors.TextPrimary,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -461,32 +463,37 @@ fun LockScreen(authViewModel: AuthViewModel) {
 
 @Composable
 private fun PinDots(enteredCount: Int, isError: Boolean) {
+    val context = LocalContext.current
     val length = maxOf(6, enteredCount)
-    Row(
-        modifier = Modifier.semantics { contentDescription = "$enteredCount digits entered" },
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
-        verticalAlignment = Alignment.CenterVertically
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr
     ) {
-        repeat(length) { index ->
-            val isFilled = index < enteredCount
-            val activeColor = if (isError) VaultColors.ErrorRed else VaultColors.Accent
-            val fill by animateColorAsState(
-                targetValue = if (isFilled) activeColor else Color.Transparent,
-                animationSpec = tween(120),
-                label = "pinDotFill$index"
-            )
-            val outline by animateColorAsState(
-                targetValue = if (isFilled) activeColor else VaultColors.Hairline,
-                animationSpec = tween(120),
-                label = "pinDotOutline$index"
-            )
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .background(fill)
-                    .border(2.dp, outline, CircleShape)
-            )
+        Row(
+            modifier = Modifier.semantics { contentDescription = context.getString(R.string.lock_digits_entered, enteredCount) },
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            repeat(length) { index ->
+                val isFilled = index < enteredCount
+                val activeColor = if (isError) VaultColors.ErrorRed else VaultColors.Accent
+                val fill by animateColorAsState(
+                    targetValue = if (isFilled) activeColor else Color.Transparent,
+                    animationSpec = tween(120),
+                    label = "pinDotFill$index"
+                )
+                val outline by animateColorAsState(
+                    targetValue = if (isFilled) activeColor else VaultColors.Hairline,
+                    animationSpec = tween(120),
+                    label = "pinDotOutline$index"
+                )
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(fill)
+                        .border(2.dp, outline, CircleShape)
+                )
+            }
         }
     }
 }
@@ -509,50 +516,54 @@ private fun PinKeypad(
         listOf("7", "8", "9")
     )
 
-    Column(modifier = modifier) {
-        rows.forEach { row ->
-            Row(modifier = Modifier.fillMaxWidth()) {
-                row.forEach { digit ->
-                    KeyCell {
-                        DigitKey(digit = digit, enabled = enabled, onClick = { onDigit(digit) })
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr
+    ) {
+        Column(modifier = modifier) {
+            rows.forEach { row ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    row.forEach { digit ->
+                        KeyCell {
+                            DigitKey(digit = digit, enabled = enabled, onClick = { onDigit(digit) })
+                        }
                     }
                 }
             }
-        }
-        Row(modifier = Modifier.fillMaxWidth()) {
-            KeyCell {
-                if (showSubmit) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                KeyCell {
+                    if (showSubmit) {
+                        IconKey(
+                            icon = Icons.Outlined.LockOpen,
+                            description = stringResource(R.string.lock_unlock),
+                            tint = VaultColors.Accent,
+                            iconSize = 30.dp,
+                            enabled = enabled,
+                            onClick = onSubmit
+                        )
+                    } else if (showBiometric) {
+                        IconKey(
+                            icon = Icons.Outlined.Fingerprint,
+                            description = stringResource(R.string.lock_unlock_biometrics),
+                            tint = VaultColors.Accent,
+                            iconSize = 30.dp,
+                            enabled = enabled,
+                            onClick = onBiometric
+                        )
+                    }
+                }
+                KeyCell {
+                    DigitKey(digit = "0", enabled = enabled, onClick = { onDigit("0") })
+                }
+                KeyCell {
                     IconKey(
-                        icon = Icons.Outlined.LockOpen,
-                        description = "Unlock",
-                        tint = VaultColors.Accent,
-                        iconSize = 30.dp,
+                        icon = Icons.AutoMirrored.Outlined.Backspace,
+                        description = stringResource(R.string.lock_delete),
+                        tint = VaultColors.TextPrimary,
+                        iconSize = 24.dp,
                         enabled = enabled,
-                        onClick = onSubmit
-                    )
-                } else if (showBiometric) {
-                    IconKey(
-                        icon = Icons.Outlined.Fingerprint,
-                        description = "Unlock with biometrics",
-                        tint = VaultColors.Accent,
-                        iconSize = 30.dp,
-                        enabled = enabled,
-                        onClick = onBiometric
+                        onClick = onDelete
                     )
                 }
-            }
-            KeyCell {
-                DigitKey(digit = "0", enabled = enabled, onClick = { onDigit("0") })
-            }
-            KeyCell {
-                IconKey(
-                    icon = Icons.AutoMirrored.Outlined.Backspace,
-                    description = "Delete",
-                    tint = VaultColors.TextPrimary,
-                    iconSize = 24.dp,
-                    enabled = enabled,
-                    onClick = onDelete
-                )
             }
         }
     }
@@ -641,13 +652,13 @@ private fun LockoutBanner(seconds: Int) {
         Spacer(modifier = Modifier.width(12.dp))
         Column {
             Text(
-                text = "Too many attempts",
+                text = stringResource(R.string.lock_too_many_attempts),
                 style = VaultType.Meta,
                 color = VaultColors.TextPrimary,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "Try again in ${seconds}s",
+                text = stringResource(R.string.lock_try_again_in, seconds),
                 style = VaultType.Meta,
                 color = VaultColors.TextSecondary
             )

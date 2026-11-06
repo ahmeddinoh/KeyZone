@@ -55,6 +55,11 @@ class CipherVaultApp : Application() {
      */
     var ignoreNextBackgroundLock = false
 
+    /**
+     * Timestamp of when the app was placed in the background. Used to calculate auto-lock delay.
+     */
+    var backgroundTimestamp: Long = 0L
+
     override fun onCreate() {
         super.onCreate()
         instance = this

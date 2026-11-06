@@ -93,7 +93,7 @@ class BiometricAuthManager(private val context: Context) {
      */
     fun promptBiometric(
         activity: FragmentActivity,
-        title: String = "Unlock KeyZone",
+        title: String = "Unlock Key Zone",
         subtitle: String = "Touch the fingerprint sensor to unlock",
         onSuccess: () -> Unit,
         onError: (String) -> Unit

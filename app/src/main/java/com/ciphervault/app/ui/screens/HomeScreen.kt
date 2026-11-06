@@ -35,6 +35,8 @@ import kotlin.math.pow
 import androidx.activity.compose.BackHandler
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.ciphervault.app.R
 import kotlinx.coroutines.delay
 
 @Composable
@@ -56,7 +58,7 @@ fun HomeScreen(
     BackHandler {
         if (backPressCount == 0) {
             backPressCount++
-            Toast.makeText(context, "Press back button again to exit", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.welcome_press_back), Toast.LENGTH_SHORT).show()
         } else {
             val activity = context as? android.app.Activity
             activity?.finish()
@@ -67,7 +69,7 @@ fun HomeScreen(
     val recentFiles = remember(files) { files.take(5) }
     val totalSize by vaultViewModel.totalSize.collectAsState()
 
-    val greeting = remember { getTimeBasedGreeting() }
+    val greeting = getTimeBasedGreeting()
 
     // Smooth entry animation for the vault ring
     var triggerAnimation by remember { mutableStateOf(false) }
@@ -128,12 +130,12 @@ fun HomeScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Shield,
-                                contentDescription = "Backup Vault",
+                                contentDescription = stringResource(R.string.home_backup_vault),
                                 tint = VaultColors.Accent,
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
-                                text = "Backup",
+                                text = stringResource(R.string.home_backup),
                                 style = VaultType.Meta,
                                 color = VaultColors.TextPrimary
                             )
@@ -144,12 +146,12 @@ fun HomeScreen(
                 // Editorial Headline
                 Column {
                     Text(
-                        text = "Everything is",
+                        text = stringResource(R.string.home_everything_is),
                         style = VaultType.PageTitle,
                         color = VaultColors.TextPrimary
                     )
                     Text(
-                        text = "safely locked.",
+                        text = stringResource(R.string.home_safely_locked),
                         style = VaultType.PageTitle.copy(fontStyle = FontStyle.Italic),
                         color = VaultColors.Accent
                     )
@@ -223,22 +225,10 @@ fun HomeScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
-                                    text = "VAULT STORAGE",
+                                    text = stringResource(R.string.home_vault_storage),
                                     style = VaultType.Meta,
                                     color = VaultColors.TextSecondary
                                 )
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(VaultColors.AccentTint)
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = "AES-256",
-                                        style = VaultType.Meta,
-                                        color = VaultColors.Accent
-                                    )
-                                }
                             }
 
                             Spacer(modifier = Modifier.height(6.dp))
@@ -252,7 +242,7 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.height(2.dp))
 
                             Text(
-                                text = "Zero-knowledge encrypted",
+                                text = stringResource(R.string.home_zero_knowledge),
                                 style = VaultType.Meta,
                                 color = VaultColors.TextSecondary
                             )
@@ -280,7 +270,7 @@ fun HomeScreen(
                                 modifier = Modifier.size(15.dp)
                             )
                             Text(
-                                text = "${files.size} ${if (files.size == 1) "file" else "files"} secured",
+                                text = stringResource(R.string.home_files_secured, files.size, if (files.size == 1) stringResource(R.string.home_file) else stringResource(R.string.home_files)),
                                 style = VaultType.Meta,
                                 color = VaultColors.TextSecondary
                             )
@@ -295,7 +285,7 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = "Open vault",
+                                text = stringResource(R.string.home_open_vault),
                                 style = VaultType.Meta,
                                 color = VaultColors.Accent
                             )
@@ -321,13 +311,13 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Recent activity",
+                        text = stringResource(R.string.home_recent_activity),
                         style = VaultType.SectionTitle,
                         color = VaultColors.TextPrimary
                     )
                     if (files.isNotEmpty()) {
                         Text(
-                            text = "See all (${files.size})",
+                            text = stringResource(R.string.home_see_all, files.size),
                             style = VaultType.Meta,
                             color = VaultColors.Accent,
                             modifier = Modifier
@@ -415,7 +405,7 @@ private fun RecentFileRow(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "Encrypted · ${timeAgo(encryptedAt)}",
+                text = stringResource(R.string.home_encrypted_ago, timeAgo(encryptedAt)),
                 style = VaultType.Meta,
                 color = VaultColors.TextSecondary
             )
@@ -465,13 +455,13 @@ private fun EmptyVaultCard(onActionClick: () -> Unit) {
             }
             Spacer(modifier = Modifier.height(14.dp))
             Text(
-                text = "Your vault is empty",
+                text = stringResource(R.string.home_vault_empty),
                 style = VaultType.ItemTitle,
                 color = VaultColors.TextPrimary
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Tap to encrypt and lock your first file",
+                text = stringResource(R.string.home_vault_empty_tap),
                 style = VaultType.Meta,
                 color = VaultColors.TextSecondary
             )
@@ -493,12 +483,13 @@ private fun iconForFileName(fileName: String): ImageVector {
     }
 }
 
+@Composable
 private fun getTimeBasedGreeting(): String {
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
     return when (hour) {
-        in 5..11 -> "Good morning"
-        in 12..16 -> "Good afternoon"
-        else -> "Good evening"
+        in 5..11 -> stringResource(R.string.home_good_morning)
+        in 12..16 -> stringResource(R.string.home_good_afternoon)
+        else -> stringResource(R.string.home_good_evening)
     }
 }
 
@@ -510,15 +501,16 @@ fun formatFileSize(bytes: Long): String {
     return "%.1f %s".format(bytes / 1024.0.pow(idx.toDouble()), units[idx])
 }
 
+@Composable
 fun timeAgo(timestamp: Long): String {
     val diff = (System.currentTimeMillis() - timestamp).coerceAtLeast(0L)
     val minutes = diff / (60 * 1000)
     val hours = minutes / 60
     val days = hours / 24
     return when {
-        minutes < 1 -> "Just now"
-        minutes < 60 -> "$minutes min ago"
-        hours < 24 -> "$hours ${if (hours == 1L) "hr" else "hrs"} ago"
-        else -> "$days ${if (days == 1L) "day" else "days"} ago"
+        minutes < 1 -> stringResource(R.string.home_just_now)
+        minutes < 60 -> stringResource(R.string.home_min_ago, minutes)
+        hours < 24 -> stringResource(R.string.home_hr_ago, hours)
+        else -> stringResource(R.string.home_days_ago, days)
     }
 }
