@@ -1,4 +1,23 @@
-# Project exclude paths
-/.gradle/
+# Built application files / APKS
+*.apk
+*.aab
+*.aar
+/app/release/
+
+# Gradle & Build files
+.gradle/
+build/
 /app/build/
-/app/build/intermediates/javac/debug/classes/
+
+# Local configuration
+local.properties
+
+# Android Studio / IntelliJ IDEA files
+.idea/
+*.iml
+.DS_Store
+
+# Temporary scratch files
+temp_extract.py
+old_*.kt
+test_*.kt
