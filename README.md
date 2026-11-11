@@ -1,6 +1,7 @@
 <div align="center">
 
-# 🔐 Key Zone
+<img src="docs/images/full_name_logo.png" alt="Key Zone Logo" width="500" />
+<br>
 
 **Zero-knowledge file encryption. Offline. On your device.**
 
@@ -140,7 +141,7 @@ flowchart TD
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourname/KeyZone.git
+git clone https://github.com/ahmeddinoh/KeyZone
 cd KeyZone
 
 # 2. Open in Android Studio
