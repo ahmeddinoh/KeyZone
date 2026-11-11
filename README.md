@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🔐 CipherVault
+# 🔐 Key Zone
 
 **Zero-knowledge file encryption. Offline. On your device.**
 
@@ -140,11 +140,11 @@ flowchart TD
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourname/CipherVault.git
-cd CipherVault
+git clone https://github.com/yourname/KeyZone.git
+cd KeyZone
 
 # 2. Open in Android Studio
-# File → Open → select the CipherVault folder
+# File → Open → select the Key Zone folder
 
 # 3. Sync Gradle, then build:
 # Build → Make Project (or Shift+F9)
@@ -198,7 +198,7 @@ implementation("com.google.zxing:core:3.5.2")
 - **Device seizure while unlocked** — this is mitigated by the auto-lock on background feature.
 
 ### Zero-Knowledge Philosophy
-CipherVault has no server, no account, and no sync mechanism. The encryption key exists solely in your head (as a PIN or password) and transiently in RAM during an active session. There is nothing on any server that can be subpoenaed, breached, or compelled.
+Key Zone has no server, no account, and no sync mechanism. The encryption key exists solely in your head (as a PIN or password) and transiently in RAM during an active session. There is nothing on any server that can be subpoenaed, breached, or compelled.
 
 ---
 
