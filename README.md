@@ -1,85 +1,213 @@
+<div align="center">
+
 # 🔐 CipherVault
 
-An offline, zero-knowledge Android file encryption vault and storage manager built with **Kotlin**, **Jetpack Compose**, and **Material 3**.
+**Zero-knowledge file encryption. Offline. On your device.**
+
+[![Encryption: AES-256-GCM](https://img.shields.io/badge/Encryption-AES--256--GCM-brightgreen?style=for-the-badge)](https://en.wikipedia.org/wiki/Galois/Counter_Mode)
+[![KDF: PBKDF2](https://img.shields.io/badge/KDF-PBKDF2--SHA256%20%C2%B7%20310k%20iter-blue?style=for-the-badge)](https://en.wikipedia.org/wiki/PBKDF2)
+[![2FA: TOTP](https://img.shields.io/badge/2FA-RFC%206238%20TOTP-orange?style=for-the-badge)](https://datatracker.ietf.org/doc/html/rfc6238)
+<br>
+[![Kotlin: 2.0](https://img.shields.io/badge/Kotlin-2.0-purple?style=for-the-badge&logo=kotlin)](https://kotlinlang.org/)
+[![Android: API 26+](https://img.shields.io/badge/Android-API%2026%2B-green?style=for-the-badge&logo=android)](https://developer.android.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge)](LICENSE)
+
+> Every file is encrypted with AES-256-GCM before it enters the vault.  
+> No cloud. No accounts. No telemetry. **Your key never leaves your device.**
+
+</div>
 
 ---
 
-## 🌟 Key Architecture & Security Features
+## 📸 Screenshots
 
-### 1. Key-Derived Encryption (Not Just a Lock Screen)
-- **Zero-Knowledge Architecture:** Your PIN or password **IS** the encryption key. Data cannot be decrypted or recovered without it.
-- **PBKDF2 Key Derivation:** Uses `PBKDF2WithHmacSHA256` with **150,000 iterations** and a 32-byte cryptographically secure random salt to derive a 256-bit AES wrapping key.
-- **AES-256-GCM Master Key:** A high-entropy 256-bit master key is generated for file encryption and stored wrapped (encrypted) with the user's derived key.
-- **Verification Token:** Uses an authenticated ciphertext token to immediately verify the PIN/password on unlock without touching stored files.
-- **Key Rotation:** Change your PIN/password at any time — re-wraps the master key without needing to re-encrypt all files.
-- **Memory Security:** Plaintext keys reside only in ephemeral memory while unlocked and are actively wiped (`fill(0)`) when the vault is locked.
+<table align="center">
+  <tr>
+    <td align="center"><b>Welcome (English)</b></td>
+    <td align="center"><b>Home Dashboard</b></td>
+    <td align="center"><b>Welcome (Arabic)</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/welcome_en.png" width="250" alt="Welcome screen (English)" /></td>
+    <td><img src="docs/images/home_dashboard.jpg" width="250" alt="Home dashboard" /></td>
+    <td><img src="docs/images/welcome_ar.png" width="250" alt="Welcome screen (Arabic)" /></td>
+  </tr>
+</table>
 
----
-
-### 2. Standalone Offline RFC 6238 TOTP 2FA Engine
-- **100% Offline Operation:** Operates completely air-gapped with zero network calls. All calculations rely strictly on the local device system clock.
-- **Compatible with Google Authenticator:** Compliant with RFC 6238 and RFC 4226.
-  - Secret: 160-bit (20-byte) cryptographically secure random seed encoded in RFC 4648 Base32.
-  - Standard URI format: `otpauth://totp/CipherVault:Vault?secret={SECRET}&issuer=CipherVault&algorithm=SHA1&digits=6&period=30`.
-- **Integrated QR Code Generator:** Uses ZXing entirely offline to render the QR code directly onto a Compose Canvas / Bitmap for instant scanning.
-- **Clock Drift Tolerance:** Enforces a ±1 time step tolerance window (current step, -30s, +30s) to account for minor clock discrepancies.
-- **Dynamic Truncation:** RFC 4226 §5.4 HMAC-SHA1 dynamic 4-byte extraction reduced to a 6-digit decimal code.
-- **Replay Protection:** Tracks the last successfully verified counter/timestamp to prevent reused codes within the same time window.
-- **Brute-Force Rate Limiting:** Consecutive failed verification attempts trigger an automatic 30-second lockout after 5 failures.
-- **Hardware-Backed Secret Storage:** Local TOTP secret is stored encrypted inside the **Android KeyStore** hardware security module.
-- **Emergency Recovery Codes:** Generates 8 single-use backup recovery codes (`XXXXX-XXXXX`). Only SHA-256 hashes are stored; codes are permanently consumed upon use.
+<p align="center">
+  <i>Full RTL (Right-to-Left) support is integrated directly into the design.</i>
+</p>
 
 ---
 
-### 3. Multi-Device Vault Backup & Import Flow
-- **Export (.cvault Archive):** Exports all encrypted files alongside a structured manifest and the master-key-encrypted TOTP secret for cross-device portability.
-- **Import Flow:**
-  1. **Select Backup File:** Inspects `.cvault` metadata.
-  2. **Enter Vault Key:** Asks for the PIN or Password protecting the vault and verifies derivation.
-  3. **Verify 2FA:** Prompts for the 6-digit code from Google Authenticator (or an emergency recovery code).
-  4. **Permanent Activation:** Once validated, the vault is imported. On future launches, the app **only asks for the PIN/password key** to unlock the vault, not the Authenticator 2FA code.
+## ✨ Features
+
+### 🔒 Security Architecture
+- **AES-256-GCM Encryption**: Authenticated encryption. Every file gets a unique 12-byte IV.
+- **PBKDF2-SHA256 Key Derivation**: Uses 310,000 iterations + a 32-byte random salt.
+- **Zero-Knowledge Design**: The raw key is never stored; only salted derivation data persists.
+- **Hardware-Backed Android Keystore**: Secure biometric unlock using AES-256-GCM key wrapping.
+- **Anti-Screenshot (`FLAG_SECURE`)**: Applied app-wide to prevent screen capture and hide recents thumbnails.
+- **Auto-Lock on Background**: The vault locks immediately when the app leaves the foreground.
+
+### 🗂️ The Vault
+- **Universal File Support**: Encrypt any file type from device storage via the Storage Access Framework (SAF).
+- **Flexible UI**: Switch between a compact list and a visual grid view.
+- **Multi-Sort**: Sort by name, date, size, or type (ascending & descending).
+- **Detailed File Info**: View name, size, encrypted size, compression ratio, date, and MIME type.
+- **In-Vault Rename**: Rename files seamlessly without decryption.
+- **Direct SAF Export**: Decrypt and export a file back to any folder or app securely.
+- **Quick Actions**: Floating Action Button (FAB) quick-encrypt shortcut available on every screen.
+
+### 🖥️ Lock Screen & Authentication
+- **Custom Credentials**: Supports a 4–8 digit PIN or an alphanumeric password.
+- **Dynamic Keypad**: Auto-advances on the final PIN digit (no confirm tap needed).
+- **Biometric Unlock**: One-tap unlock with hardware-backed key unwrapping.
+- **Haptic Feedback**: Tactile response on every keypress.
+- **Visual Error Feedback**: Shake animation + red glow on incorrect entry.
+- **Rate-Limiting Lockout**: Exponential delay after 5 consecutive failures, with a countdown banner.
+
+### 📦 Backup & 2FA (RFC 6238 TOTP)
+- **Offline TOTP Engine**: RFC 6238 compliant, fully compatible with Google Authenticator, Authy, etc.
+- **Secure Secret**: Uses a 160-bit (20-byte) cryptographically secure Base32 secret key.
+- **Easy Enrollment**: Standard `otpauth://totp/` URI and QR code for authenticator apps.
+- **Recovery Codes**: Single-use backup recovery codes (stored hashed using HMAC-SHA256).
+- **Clock-Drift Tolerance**: Checks counter −1, 0, +1 (±30 second window) to prevent sync issues.
+- **Replay Protection**: Verifies last-used counter; brute-force lockout after 5 incorrect codes.
+- **Dual-Stage Compression**: GZIP pre-compression (V2 engine) + Deflate Level 9 manifest compression.
+- **Flexible Export**: Export backups to device files (SAF `CreateDocument`) or share via any app.
+
+### ⚙️ Settings & Control
+| Section | Available Options |
+|---|---|
+| **Security & Access Control** | Toggle biometric unlock, Auto-lock on background, Anti-screenshot |
+| **Storage & Data** | Delete original after encrypting (default), Storage breakdown, Clear decrypted cache |
+| **Danger Zone** | Lock Now, Reset & Destroy Vault (requires confirmation dialog) |
 
 ---
 
-## 📱 App Screens & Navigation
+## 🏗️ Architecture
 
+```mermaid
+flowchart TD
+    A[User Key: PIN / Password] -->|PBKDF2-SHA256\n310,000 iterations\n32-byte random salt| B(Master Key: AES-256)
+    B --> C{Usage}
+    C -->|Encrypt each file\nwith unique 12-byte IV| D[AES-256-GCM]
+    C -->|Biometric key wrap\nHW-backed| E[Android Keystore]
+    D --> F[V2 Compression Engine]
+    
+    F --> G1[1. GZIP pre-compress plaintext]
+    G1 --> G2[2. Encrypt compressed bytes]
+    G2 --> G3[3. Deflate Level 9 backup manifest]
 ```
-Welcome (First Run)
- ├── Create Vault ──> Setup Screen (Choose PIN or Password) ──> Main App
- └── Import Vault ──> Import Screen (Select .cvault -> Key -> 2FA) ──> Main App
 
-Locked (Subsequent Runs)
- └── Lock Screen (Enter PIN or Password Key) ──> Main App
+### TOTP Backup Flow
 
-Main App (Authenticated)
- ├── Home (Dashboard, stats, quick actions, recent files)
- ├── Vault (Searchable encrypted files, decrypt & open, delete)
- ├── Encrypt (System file picker, batch selection & AES-256-GCM encryption)
- ├── Settings (Change Key, Clear Cache, Lock Vault)
- └── Backup & 2FA (TOTP enrollment QR code, verify 2FA, export .cvault)
-```
+<table align="center">
+  <tr>
+    <th>Enrollment Phase</th>
+    <th>Import Phase</th>
+  </tr>
+  <tr>
+    <td>
+      1. Generate 160-bit secret<br>
+      2. Build <code>otpauth://</code> URI<br>
+      3. Render QR code<br>
+      4. User scans into Authenticator<br>
+      5. Store hashed recovery codes
+    </td>
+    <td>
+      1. Enter master key<br>
+      2. Validate AES-256-GCM decryption<br>
+      3. Enter 6-digit TOTP code<br>
+      4. Verify HMAC-SHA1 counter ±1<br>
+      5. Replay protection check<br>
+      ✅ <b>Vault unlocked</b>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## 🛠 Tech Stack
+## 🛠️ Build Instructions
 
-- **Language:** Kotlin 1.9.22
-- **UI:** Jetpack Compose + Material 3 (Dark Cybersecurity Theme)
-- **Database:** Room 2.6.1 (metadata storage)
-- **Crypto:** Android KeyStore, `javax.crypto` (AES-256-GCM, PBKDF2WithHmacSHA256, HmacSHA1)
-- **2FA Engine:** Custom standalone RFC 6238 TOTP + RFC 4648 Base32 + ZXing QR
-- **Min SDK:** 26 (Android 8.0 Oreo)
-- **Target SDK:** 34 (Android 14)
+### Requirements
+- **Android Studio**: Hedgehog (2023.1.1) or later
+- **Java**: JDK 17
+- **Android SDK**: API 26+ (minSdk 26, targetSdk 34)
 
----
-
-## 🏗 Building & Running
-
-1. Open Android Studio (Hedgehog 2023.1.1+ recommended).
-2. Open the project directory: `scratch/CipherVault`.
-3. Allow Gradle to sync.
-4. Run on an Android device or emulator with API 26+.
+### Getting Started
 
 ```bash
-./gradlew assembleDebug
+# 1. Clone the repository
+git clone https://github.com/yourname/CipherVault.git
+cd CipherVault
+
+# 2. Open in Android Studio
+# File → Open → select the CipherVault folder
+
+# 3. Sync Gradle, then build:
+# Build → Make Project (or Shift+F9)
+
+# 4. Run on device or emulator:
+# Run → Run 'app' (or Shift+F10)
 ```
+
+> **Note:** Biometric features require a physical device with enrolled fingerprints.  
+> The Android emulator supports biometric simulation via `Extended Controls → Fingerprint`.
+
+### Key Dependencies
+
+```kotlin
+// Crypto & Biometric
+implementation("androidx.security:security-crypto:1.1.0-alpha06")
+implementation("androidx.biometric:biometric:1.2.0-alpha05")
+
+// Jetpack Compose (BOM)
+implementation(platform("androidx.compose:compose-bom:2024.02.00"))
+
+// Navigation
+implementation("androidx.navigation:navigation-compose:2.7.7")
+
+// Room (encrypted file metadata)
+implementation("androidx.room:room-runtime:2.6.1")
+
+// ZXing (QR code generation)
+implementation("com.google.zxing:core:3.5.2")
+```
+
+---
+
+## 🔐 Security Model
+
+### What is Protected
+| Asset | Protection Mechanism |
+|---|---|
+| **File contents** | AES-256-GCM, unique IV per file. |
+| **Master key** | Never stored — re-derived from PIN/password on every unlock. |
+| **PIN/password** | Only the PBKDF2 salt is stored; the key itself is not persisted. |
+| **Biometric path** | Master key wrapped with hardware-backed Keystore key; raw key in memory only. |
+| **Backup file** | Fully encrypted with the same master key before export. |
+| **TOTP secret** | Stored in Android Keystore (hardware-backed on supported devices). |
+| **Screen contents** | `FLAG_SECURE` prevents screenshots and recents thumbnails. |
+| **Decrypted cache** | Purged automatically on vault lock. |
+
+### Limitations (What is NOT Protected)
+- An attacker with **root access** could potentially read memory while the app is actively unlocked.
+- The **encrypted file count and sizes** are visible in the app's database metadata (though the contents remain hidden).
+- **Device seizure while unlocked** — this is mitigated by the auto-lock on background feature.
+
+### Zero-Knowledge Philosophy
+CipherVault has no server, no account, and no sync mechanism. The encryption key exists solely in your head (as a PIN or password) and transiently in RAM during an active session. There is nothing on any server that can be subpoenaed, breached, or compelled.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+<br>
+
+<div align="center">
+  Made with 🔐 and Kotlin &nbsp;&middot;&nbsp; No cloud &nbsp;&middot;&nbsp; No accounts &nbsp;&middot;&nbsp; No compromises
+</div>
