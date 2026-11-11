@@ -1,6 +1,7 @@
 <div align="center">
 
-# 🔐 Key Zone
+<img src="docs/images/full_name_logo.png" alt="Key Zone Logo" width="500" />
+<br>
 
 **Zero-knowledge file encryption. Offline. On your device.**
 
